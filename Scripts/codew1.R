@@ -47,7 +47,7 @@ state %>%
   
 # Save it!
   
-  ggsave("Plots/week1plot1.png")
+  ggsave("./Plots/week1plot1.png")
 
 # Plot 2 - post-1980 margins of victory.
 
@@ -80,4 +80,4 @@ state %>%
   ylab("Republican Margin of Victory/Defeat") +
   ggtitle("Margins of Victory since 1980",
           subtitle = "In Purple, Red, and Blue Examples") + 
-  ggsave("Plots/week1plot2.png")
+  ggsave("./Plots/week1plot2.png")
