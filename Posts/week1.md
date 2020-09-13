@@ -48,6 +48,16 @@ I sought to answer these questions with a visualization:
 
 (2) How can I effectively show these differences in a simple, straightforward manner?
 
+I created a violin plot of the Republican margin of victories in the three states post-1980.
 
+![Intrastate Trends](../Plots/week1plot2.png)
 
-I created a violin plot 
+There are three takeaways from the graph:
+
+(1) Using a violin plot helps visualize the high density of wins for Republicans and Democrats in their respective states. Colorado's wider shape around smaller margins of victories and defeats helps the reader infer that it is a swing state, even if the color was not there as a guide.
+
+(2) At this level of focus, the separate voting patterns of red and blue states are distinguishable to the naked eye. By using less ink, it is clearer to see what makes Mississippi and New Jersey different in a way that the first plot could not offer.
+
+(3) While Colorado is a swing state today (and borderline Democrat), it used to vote Republican fairly reliably. Similarly, although New Jersey is indeed blue, it does have three Republican victories since 1980.
+
+A potential extension of this graph would be to create a Shiny app that allowed the reader to pick their own red, blue, and purple states. I also debated adding repelled labels using the `ggrepel` library, but decided against it due to decreased readability. That said, labeling the outliers could help readers easily ascertain when exactly New Jersey voted Republican.

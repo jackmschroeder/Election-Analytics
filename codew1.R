@@ -77,7 +77,7 @@ state %>%
   theme_bw() + 
   theme(legend.position = "none") +
   xlab("State") +
-  ylab("Republican Margin of Victory") +
+  ylab("Republican Margin of Victory/Defeat") +
   ggtitle("Margins of Victory since 1980",
           subtitle = "In Purple, Red, and Blue Examples") + 
   ggsave("Plots/week1plot2.png")
