@@ -32,8 +32,22 @@ This visualization yields three distinct conclusions:
 
 First, although certain states have deviated from a split two-party vote share in certain electoral cycles, **"landslide" electoral victories like Reagan in 1984** (where he lost one state and Washington, DC) **do not carry nearly the same magnitude in terms of the popular vote.** So, to answer question 1, vote shares do not vary nearly as much as previously thought.
 
-Second, **elections are getting closer.**
+Second, **elections are getting closer.** Results in this millennium tend to be closer to 50% than those previous. There are a variety of reasons behind this, but an important one may be polarization of the electorate. While many voters may have swung Republican in 1984, there may simply be fewer swing voters.
+
+Finally, **DC is the only major outlier**. The large majority of the 50 states are consistently within 15 points of the national two-party vote share, but the District of Columbia is the only state where Republicans have won less than 25% of the two-party vote share within the timeframe. Without hesitation, the District has voted overwhelmingly Democrat in every cycle since 1980, and their Democrat leaning seems to only be increasing.
 
 There are two extensions for this visualization that will be improved upon in the next few weeks: (1) x-axis breaks corresponding to election years and (2) a horizontal line at 50%, signifying an even split in the two-party vote share. These should improve the graph's readability and allow the reader to more easily garner its conclusions. Another extension for the next few weeks is to plot national popular vote share versus electoral vote share, which could lead to some interesting visualizations.
 
 ### Blue, Red, and Purple: Intrastate Trends
+
+Additionally, I analyzed within-state trends since 1980. Generally speaking, states fall into one of three categories in electoral politics: red (consistently Republican), blue (consistently Democrat), or purple (a swing state). I picked an example of each of these states to work with. For a red state, I chose Mississippi, which has voted Republican in every election within the timeframe. For blue, my home state of New Jersey is commonly seen as a Democratic stronghold. Lastly, I selected Colorado as the purple state due to its tendency to swing between the two parties.
+
+I sought to answer these questions with a visualization:
+
+(1) How large are the differences in Republican margin of victory/defeat between these three states?
+
+(2) How can I effectively show these differences in a simple, straightforward manner?
+
+
+
+I created a violin plot 
