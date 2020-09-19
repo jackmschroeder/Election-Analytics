@@ -1,6 +1,4 @@
-
-
-## Introduction (9.12.20)
+## The Economy (9.19.20)
 
 ### A Primer
 
