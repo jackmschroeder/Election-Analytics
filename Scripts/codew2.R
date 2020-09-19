@@ -102,7 +102,7 @@ ggplot(local_1_error, aes(x=local_1_outsamp_pred, y=local_1_outsamp_true)) +
   geom_point() +
   geom_abline(aes(slope=1, intercept=0, color="red")) +
   ggtitle("Evaluating the Local Unemployment Model",
-          subtitle = "Underestimated Trump's vote share by 2.2 points on average") +
+          subtitle = "Underestimated Trump's vote share by 2.26 points on average") +
   ylab("Actual 2016 Republican Two-Party Vote Shares") +
   xlab("Predicted 2016 Republican Two-Party Vote Shares") +
   theme_bw() + 
