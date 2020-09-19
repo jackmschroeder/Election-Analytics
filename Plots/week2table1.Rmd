@@ -14,7 +14,14 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(stargazer)
 
-national_a <- read_csv("./Data/econ.csv") %>% 
+# Loading in libraries. Stargazer for table.
+
+library(tidyverse)
+library(stargazer)
+
+# National annual and term-based economic datasets.
+
+national_a <- read_csv("../Data/econ.csv") %>% 
   filter(year<2020) %>% 
   group_by(year) %>% 
   summarize(unemployment_nat_a = mean(unemployment),
@@ -23,7 +30,7 @@ national_a <- read_csv("./Data/econ.csv") %>%
             stock_a = mean(stock_close),
             GDP_growth_a = mean(GDP_growth_qt))
 
-national_t <- read_csv("./Data/econ.csv") %>% 
+national_t <- read_csv("../Data/econ.csv") %>% 
   filter(year<2020) %>% 
   mutate(term = trunc((year-1949)/4, 1)) %>% 
   group_by(term) %>% 
@@ -34,7 +41,9 @@ national_t <- read_csv("./Data/econ.csv") %>%
             stock_t = mean(stock_close),
             GDP_growth_t = mean(GDP_growth_qt))
 
-local_a <- read_csv("./Data/local.csv") %>% 
+# The same for local (state-by-state).
+
+local_a <- read_csv("../Data/local.csv") %>% 
   rename(year = Year,
          state = `State and area`) %>% 
   filter(year<2020) %>% 
@@ -42,7 +51,7 @@ local_a <- read_csv("./Data/local.csv") %>%
   summarize(unemployment_loc_a = mean(Unemployed_prce),
             lfpr_loc_a = mean(LaborForce_prct))
 
-local_t <- read_csv("./Data/local.csv") %>% 
+local_t <- read_csv("../Data/local.csv") %>% 
   rename(year = Year,
          state = `State and area`) %>% 
   filter(year<2020) %>% 
@@ -54,7 +63,7 @@ local_t <- read_csv("./Data/local.csv") %>%
 
 # National popular vote data - same mutations as week 1.
   
-national_v <- read_csv("Data/popvote_1948-2016.csv") %>% 
+national_v <- read_csv("../Data/popvote_1948-2016.csv") %>% 
   filter(party == "republican") %>%
   mutate(margin_pct_nat = pv2p-50,
          margin_pct_lag_nat = lag(margin_pct_nat),
@@ -62,10 +71,12 @@ national_v <- read_csv("Data/popvote_1948-2016.csv") %>%
 
 # Same mutations as week 1 for state popular vote data.
 
-local_v <- read_csv("./Data/popvote_bystate_1948-2016.csv") %>% 
+local_v <- read_csv("../Data/popvote_bystate_1948-2016.csv") %>% 
   mutate(margin_pct = R_pv2p - 50,
          margin_pct_lag = lag(margin_pct),
          swing = margin_pct - margin_pct_lag)
+
+# Master national and local datasets with vote and economic data.
 
 national <- national_v %>% 
   left_join(., national_a, by ="year") %>% 
@@ -80,31 +91,63 @@ local <- local_v %>%
   left_join(., local_t, by = c("year", "state")) %>% 
   filter(year>1979)
 
+# Local model.
+
 local_1 <- lm(R_pv2p ~ unemployment_loc_t + GDP_growth_t + incumbent_party, data=local)
 summary(local_1)
+
+# Evaluate local model.
 
 local_1_outsamp_mod  <- lm(R_pv2p ~ unemployment_loc_t + GDP_growth_t + incumbent_party, local[local$year != 2016,])
 summary(local_1_outsamp_mod)
 local_1_outsamp_pred <- predict(local_1_outsamp_mod, local[local$year == 2016,])
-local_1_outsamp_true <- local$pv2p[local$year == 2016]
-truth <- as_tibble(cbind(local_1_outsamp_pred, local_1_outsamp_true)) %>% 
-  mutate(diff = local_1_outsamp_pred - local_1_outsamp_true) %>% 
-  summarize(avg_diff = mean(diff))
+local_1_outsamp_true <- local$R_pv2p[local$year == 2016]
+
+# State-by-state errors for local model.
+
+local_1_error <- as_tibble(cbind(local_1_outsamp_pred, local_1_outsamp_true)) %>% 
+  mutate(diff = local_1_outsamp_pred - local_1_outsamp_true)
+
+# Underestimate Trump's vote share by over 2 points.
+
+mean(local_1_error$diff)
+
+# Plotting the error of the local model in 2016.
+
+ggplot(local_1_error, aes(x=local_1_outsamp_pred, y=local_1_outsamp_true)) +
+  geom_point() +
+  geom_abline(aes(slope=1, intercept=0, color="red")) +
+  ggtitle("Evaluating the Local Unemployment Model",
+          subtitle = "Underestimated Trump's vote share by 2.2 points on average") +
+  ylab("Actual 2016 Republican Two-Party Vote Shares") +
+  xlab("Predicted 2016 Republican Two-Party Vote Shares") +
+  theme_bw() + 
+  theme(legend.position = "none")
+
+# National model.
 
 national_1 <- lm(pv2p ~ unemployment_nat_t + GDP_growth_t + incumbent_party, data=national)
-summary(local_1)
+summary(national_1)
+
+# Evaluate national model.
 
 national_1_outsamp_mod  <- lm(pv2p ~ unemployment_nat_t + GDP_growth_t + incumbent_party, national[national$year != 2016,])
 summary(national_1_outsamp_mod)
 national_1_outsamp_pred <- predict(national_1_outsamp_mod, national[national$year == 2016,])
 national_1_outsamp_true <- national$pv2p[national$year == 2016]
+
+# Slightly better underestimate (only 2.18 versus 2.26 for local).
+
+national_1_outsamp_pred - national_1_outsamp_true
+
+# Make a regression table through stargazer.
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
 stargazer(national_1, national_1_outsamp_mod, local_1, local_1_outsamp_mod,
           title = "Simple Unemployment Electoral Models (National and Local)",
           header = FALSE,
-          covariate.labels = c("Unemployment Rate (Nat.)", "Unemployment Rate (Loc.)",  "GDP Growth (Nat.)", "Incumbent Party"),
+          covariate.labels = c("Unemployment Rate (Nat.)", "Unemployment Rate (Loc.)", "GDP Growth (Nat.)", "Incumbent Party"),
           dep.var.labels = c("Republican Two-Party Vote Share (Nat.)", "Republican Two-Party Vote Share (Loc.)"),
           omit.stat = c("f", "rsq"),
           notes.align = "l",

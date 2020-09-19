@@ -2,56 +2,62 @@
 
 ### A Primer
 
-This week, I worked with two bare-bones datasets. One relayed national popular vote totals in presidential elections, and the other contained state-by-state totals of the same information. For the below content, I focused on outcomes in the last 40 years, starting with the 1980 election.
+This week's focus was *the economy*. One of these datasets described national economic indicators (GDP growth, stock market trends, inflation, unemployment). The second contained local economic indicators by state and area (unemployment and labor force participation).
 
-These datasets lack predictive power because electoral outcomes are not wholly dependent on prior outcomes. Instead, I will create a predictive model in later weeks using a diverse set of benchmarks and indicators.
+I decided to create simple models with these datasets and evaluate their performance. Instead of predicting a 2020 winner, I decided to test the models with 2016 results to see if they were overfitting. This was because, similar to last week, I only counted results from 1980 onward.
 
-As a result, this week is focused on *data exploration*. Namely, I set out to analyze any simple trends hidden within these CSV files and plot them with the `ggplot` library.
+I sought out to answer these questions:
 
-### National Vote Share Trends
+(1) How well do these models explain popular vote outcomes? (Decently well, at least for the national model.)
 
-I first observed general variations in the national vote share between the two major parties (Republican and Democrat). Uniquely, most Americans internalize the results of elections through Electoral College votes, since they decide the winner. The general public largely disregards the popular vote, which can mask discrepencies between the two outcomes.
+(2) Did this vary between a national-leaning model and a local-based one? (Yes.)
 
-The current data only focus on the popular vote, so I am undergoing a descriptive analysis to answer two questions.
+(3) What would these models have predicted in 2016? (Both understimated Trump.)
 
-(1) Do vote shares vary much from election to election?
+### Data Cleaning
 
-(2) Which state is the largest outlier in two-party vote share versus the national trend?
+I took both datasets and calculated averages of each indicator over the course of a presidential term. For example, the first quarter of 2013 to the last quarter of 2016 comprises one term. A potential issue with this is that trends from the last quarter of an election year (1) contain almost two months of post-election data and (2) are also not published until after the election. That said, including the last quarter of the year within the term makes sense because it incorporates any economic shocks immediately preceding the election (in October and the first week of November), which may have an outsize impact on how people vote. As a result, I stand by my definition of a term for this exercise.
 
-To answer these questions, I cleaned both datasets and added variables for vote margin and vote swing. I then graphed Republican two-party vote share versus year for each state. I also added a national trendline to accentuate the average.
+I merged these annual and term-based indicators with national and state-level popular vote data, creating two master datasets (`national` and `local`) to make models with.
 
-![National Vote Share Trends](../Plots/week1plot1.png)
+### Constructing the Models
 
-This visualization yields three distinct conclusions:
+I was primarily interested in evaluating unemployment, since it was an indicator present nationally and state-by-state. I wanted to play these measures off one another, creating one model with local data and one model with national data.
 
-First, although certain states have deviated from a split two-party vote share in certain electoral cycles, **"landslide" electoral victories like Reagan in 1984** (where he lost one state and Washington, DC) **do not carry nearly the same magnitude in terms of the popular vote.** So, to answer question 1, vote shares do not vary nearly as much as previously thought.
+The other inputs into the model were GDP growth and party incumbency. Since neither of these varied between the two models, I only included them to account for larger, national shocks and which party was in power.
 
-Second, **elections are getting closer.** Results in this millennium tend to be closer to 50% than those previous. There are a variety of reasons behind this, but an important one may be polarization of the electorate. While many voters may have swung Republican in 1984, there may simply be fewer swing voters.
+The output variable for all of the models is Republican two-party popular vote share. This is the national total for the national models, and the local models correspond to the state-by-state levels. Since both of these variables have the same range (0 to 100), it should be fairly easy to interpret between the specifications.
 
-Finally, **DC is the only major outlier**. The large majority of the 50 states are consistently within 15 points of the national two-party vote share, but the District of Columbia is the only state where Republicans have won less than 25% of the two-party vote share within the timeframe. Without hesitation, the District has voted overwhelmingly Democrat in every cycle since 1980, and their Democrat leaning seems to only be increasing.
+### Evaluating the Models
 
-There are two extensions for this visualization that will be improved upon in the next few weeks: (1) x-axis breaks corresponding to election years and (2) a horizontal line at 50%, signifying an even split in the two-party vote share. These should improve the graph's readability and allow the reader to more easily garner its conclusions. Another extension for the next few weeks is to plot national popular vote share versus electoral vote share, which could lead to some interesting visualizations.
+These two models are (1) and (3) in the table below. Models (2) and (4) are the results of those models without data from 2016.
 
-### Blue, Red, and Purple: Intrastate Trends
+![Simple Unemployment Electoral Models](../Plots/week2table1.png)
 
-Additionally, I analyzed within-state trends since 1980. Generally speaking, states fall into one of three categories in electoral politics: red (consistently Republican), blue (consistently Democrat), or purple (a swing state). I picked an example of each of these states to work with. For a red state, I chose Mississippi, which has voted Republican in every election within the timeframe. For blue, my home state of New Jersey is commonly seen as a Democratic stronghold. Lastly, I selected Colorado as the purple state due to its tendency to swing between the two parties.
+There are a few takeaways from the table:
 
-I sought to answer these questions with a visualization:
+First, **national unemployment is more significant** than local unemployment in these specifications. That said, national unemployment was no longer significant at the 0.1 level once taking 2016 data out in model (2).
 
-(1) How large are the differences in Republican margin of victory/defeat between these three states?
+Second, **GDP growth matters**, even after taking economic indicators into account.
 
-(2) How can I effectively show these differences in a simple, straightforward manner?
+Third, **the national models explain much more of the variation than the local models**. I focused on adjusted r-squared. This is because unlike normal r-squared, which always increases when the model has more parameters, adjusted r-squared "punishes" the model's score if the additional paramters are not explanatory. This is probably the reason why the r-squared dips so low between the national and local models, even though both models are rather similar. Still, the national model's adjusted r-squared of ~40% is a fairly good indicator for the simple model's strength.
 
-I created a violin plot of the Republican margin of victories in the three states post-1980.
+Finally, **there is a large potential for overfitting in these models**. An extension to this post would be to calculate these models with data going further back in time to see if the values change.
 
-![Intrastate Trends](../Plots/week1plot2.png)
+### 2016 Predictions vs Reality
+
+As explained above, models (2) and (4) evaluated models (1) and (3) without data from 2016. This is the "leave-one-out" technique explained in section.
+
+The local model yielded 51 distinct predictions for 2016 results (for the 50 states plus DC). In the visualization below, I graphed the predicted Republican vote shares versus the actual Republican vote shares. I also included a red reference line with a slope of 1. Values closer to this line are more accurate.
+
+![Evaluating the Local Unemployment Model](../Plots/week2plot1.png)
 
 There are three takeaways from the graph:
 
-(1) Using a violin plot helps visualize the high density of wins for Republicans and Democrats in their respective states. Colorado's wider shape around smaller margins of victories and defeats helps the reader infer that it is a swing state, even if the color was not there as a guide.
+(1) **The model expected a very tight distribution of Republican two-party vote shares**. This is because the only aspect of the model that varied between states was unemployment, which I would expect to be fairly uniform across the country.
 
-(2) At this level of focus, the separate voting patterns of red and blue states are distinguishable to the naked eye. By using less ink, it is clearer to see what makes Mississippi and New Jersey different in a way that the first plot could not offer.
+(2) **The errors do not appear to be correlated**. This is a good sign for the local model's health.
 
-(3) While Colorado is a swing state today (and borderline Democrat), it used to vote Republican fairly reliably. Similarly, although New Jersey is indeed blue, it does have three Republican victories since 1980.
+Overall, the local model *underestimated Trump's 2016 vote share by 2.26 percentage points*. This is only slightly more than the *national model's underestimate of 2.21*. I'm decently satisfied with this result, but the goal would be to reduce this error in future weeks by adding more/better parameters to the model.
 
-A potential extension of this graph would be to create a Shiny app that allowed the reader to pick their own red, blue, and purple states. I also debated adding repelled labels using the `ggrepel` library, but decided against it due to decreased readability. That said, labeling the outliers could help readers easily ascertain when exactly New Jersey voted Republican.
+A potential extension of these models would be to *include lagged vote share*, which would hopefully reduce the error and produce a wider distribution of predicted values within the local model.
