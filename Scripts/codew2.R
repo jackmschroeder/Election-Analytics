@@ -26,8 +26,7 @@ national_t <- read_csv("./Data/econ.csv") %>%
 local_a <- read_csv("./Data/local.csv") %>% 
   rename(year = Year,
          state = `State and area`) %>% 
-  filter(year<2020,
-         `FIPS Code` < 100) %>% 
+  filter(year<2020) %>% 
   group_by(state, year) %>% 
   summarize(unemployment_loc_a = mean(Unemployed_prce),
             lfpr_loc_a = mean(LaborForce_prct))
@@ -35,16 +34,12 @@ local_a <- read_csv("./Data/local.csv") %>%
 local_t <- read_csv("./Data/local.csv") %>% 
   rename(year = Year,
          state = `State and area`) %>% 
-  filter(year<2020,
-         `FIPS Code` < 100) %>% 
+  filter(year<2020) %>% 
   mutate(term = trunc((year-1949)/4, 1)) %>% 
   group_by(state, term) %>% 
   summarize(year = max(year),
             unemployment_loc_t = mean(Unemployed_prce),
             lfpr_loc_t = mean(LaborForce_prct))
-
-local <- read_csv("./Data/local.csv") %>% 
-  select(-X1)
 
 # National popular vote data - same mutations as week 1.
   
@@ -59,7 +54,36 @@ national_v <- read_csv("Data/popvote_1948-2016.csv") %>%
 local_v <- read_csv("./Data/popvote_bystate_1948-2016.csv") %>% 
   mutate(margin_pct = R_pv2p - 50,
          margin_pct_lag = lag(margin_pct),
-         swing = margin_pct - margin_pct_lag) %>% 
-  left_join(., national_v, by="year")
+         swing = margin_pct - margin_pct_lag)
 
-# m1 <- lm(pv2p ~ )
+national <- national_v %>% 
+  left_join(., national_a, by ="year") %>% 
+  left_join(., national_t, by = "year") %>% 
+  filter(year>1979)
+
+local <- local_v %>% 
+  left_join(., national_v, by="year") %>% 
+  left_join(., national_a, by ="year") %>% 
+  left_join(., national_t, by = "year") %>% 
+  left_join(., local_a, by = c("year", "state")) %>% 
+  left_join(., local_t, by = c("year", "state")) %>% 
+  filter(year>1979)
+
+local_1 <- lm(R_pv2p ~ unemployment_loc_t + GDP_growth_t + incumbent_party, data=local)
+summary(local_1)
+
+local_1_outsamp_mod  <- lm(R_pv2p ~ unemployment_loc_t + GDP_growth_t + incumbent_party, local[local$year != 2016,])
+summary(local_1_outsamp_mod)
+local_1_outsamp_pred <- predict(local_1_outsamp_mod, local[local$year == 2016,])
+local_1_outsamp_true <- local$pv2p[local$year == 2016]
+truth <- as_tibble(cbind(local_1_outsamp_pred, local_1_outsamp_true)) %>% 
+  mutate(diff = local_1_outsamp_pred - local_1_outsamp_true) %>% 
+  summarize(avg_diff = mean(diff))
+
+national_1 <- lm(pv2p ~ unemployment_nat_t + GDP_growth_t + incumbent_party, data=national)
+summary(national_1)
+
+national_1_outsamp_mod  <- lm(pv2p ~ unemployment_nat_t + GDP_growth_t + incumbent_party, national[national$year != 2016,])
+summary(national_1_outsamp_mod)
+national_1_outsamp_pred <- predict(national_1_outsamp_mod, national[national$year == 2016,])
+national_1_outsamp_true <- national$pv2p[national$year == 2016]
