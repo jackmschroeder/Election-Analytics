@@ -1,3 +1,14 @@
+---
+title: "Week 2 Table 1"
+author: "Jack Schroeder, Gabe Cederberg, and Alexandra Norris"
+date: "9/19/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 # Loading in libraries. Stargazer for table.
 
 library(tidyverse)
@@ -81,21 +92,22 @@ truth <- as_tibble(cbind(local_1_outsamp_pred, local_1_outsamp_true)) %>%
   summarize(avg_diff = mean(diff))
 
 national_1 <- lm(pv2p ~ unemployment_nat_t + GDP_growth_t + incumbent_party, data=national)
-summary(national_1)
+summary(local_1)
 
 national_1_outsamp_mod  <- lm(pv2p ~ unemployment_nat_t + GDP_growth_t + incumbent_party, national[national$year != 2016,])
 summary(national_1_outsamp_mod)
 national_1_outsamp_pred <- predict(national_1_outsamp_mod, national[national$year == 2016,])
 national_1_outsamp_true <- national$pv2p[national$year == 2016]
+```
 
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
 stargazer(national_1, national_1_outsamp_mod, local_1, local_1_outsamp_mod,
           title = "Simple Unemployment Electoral Models (National and Local)",
           header = FALSE,
-          covariate.labels = c("Unemployment Rate (Nat.)", "GDP Growth (Nat.)", "Incumbent Party", "Unemployment Rate (Loc.)"),
+          covariate.labels = c("Unemployment Rate (Nat.)", "Unemployment Rate (Loc.)",  "GDP Growth (Nat.)", "Incumbent Party"),
           dep.var.labels = c("Republican Two-Party Vote Share (Nat.)", "Republican Two-Party Vote Share (Loc.)"),
           omit.stat = c("f", "rsq"),
           notes.align = "l",
-          font.size = "tiny",
-          column.sep.width = "1pt",
-          type = "latex",
-          out = "Plots/simple")
+          column.sep.width = "1pt")
+```
+
