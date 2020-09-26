@@ -40,7 +40,21 @@ FiveThirtyEight's most common rating (by far) is a B/C.
 
 ### Methodology
 
+As discussed in lab, phone polling is generally viewed as better than online polling. Part of this is because some online polls are subject to manipulation, and, broadly speaking, phone polling should reach a more representative population than online polls. I wanted to see if this assumption holds true in FiveThirtyEight's pollster ratings.
+
+There are three possible outcomes. The assumption may hold true, meaning the website gives higher polling ratings to predominantly over-the-phone polls. On the other hand, since there is a perceived bias toward trusting phone polls, it is also possible that online pollsters work harder to ensure a representative sample, which FiveThirtyEight rewards with higher grades. All that said, it's also possible there is a similar distribution between the two mediums, which would also make sense.
+
+The visualization below segments each individual poll by methodology. I took raw polls (instead of grouping by pollster) to get a sense for the general polling environment, since some pollsters may produce significantly more polls than others. For polls that contained both online and over-the-phone elements, the dataset seemed to indicate which medium was used more by listing an online/over-the-phone method first. 
+
 ![Pollster Ratings by Methodology](../Plots/week3plot2.png)
+
+A few takeaways from the graph:
+
+(1) There is more online polling than over-the-phone. This is probably due to cost, but it is interesting that it still holds true when filtering out unrated pollsters (since new, spontaneous pollsters are likely unrated).
+
+(2) Phone polls tend to be higher-rated than online polls. This lends credence to the assumption that phone polling is more rigorous.
+
+(3) There are a significant amount of well-rated phone polls. This may be because phone pollsters with the capability to produce large number of polls also have the resources to be very rigorous and the track record to be predictive.
 
 A nice extension of this work would be to see if *national and state pollsters differ* in rating or methodology. This may be worth looking into next week.
 
