@@ -1,6 +1,7 @@
 library(tidyverse)
 library(knitr)
 library(stargazer)
+library(ggrepel)
 
 local_fundamentals <- read_csv("./Data/local_fundamentals.csv")
 national_fundamentals <- read_csv("./Data/national_fundamentals.csv")
@@ -116,15 +117,15 @@ predict(m2, trump_2020)
 
 # Lower support
 
-trump_2020$avg_support_2 <- 38
+#trump_2020$avg_support_2 <- 38
 
-predict(m2, trump_2020)
+#predict(m2, trump_2020)
 
 # 50-50
 
-trump_2020$avg_support_2 <- 50
+#trump_2020$avg_support_2 <- 50
 
-predict(m2, trump_2020)
+#predict(m2, trump_2020)
 
 # Table 1: 10 week and 2 week model
 
@@ -140,15 +141,16 @@ stargazer(m10, m2,
 
 # Ensemble model - each model worth 1/3
 
-ensemble <- (1/3) * predict(mprev, trump_2020) + (1/3) * predict(m10, trump_2020) + (1/3) * predict(m2, trump_2020)
+ensemble_pred <- (1/3) * predict(mprev, trump_2020) + (1/3) * predict(m10, trump_2020) + (1/3) * predict(m2, trump_2020)
 
-fundamentals <- as_tibble(data.frame(model = "Fundamentals", prediction = 42.6, ses = 5.768))
-tenweek <- as_tibble(data.frame(model = "Ten-Week", prediction = 44.0, ses = 2.709))
-twoweek <- as_tibble(data.frame(model = "Two-Week", prediction = 49.9, ses = 3.154))
-ensemble <- as_tibble(data.frame(model = "Ensemble", prediction = 45.5, ses = 0))
+fundamentals <- as_tibble(data.frame(model = "Fundamentals", prediction = round(predict(mprev, trump_2020), 1), ses = 5.768))
+tenweek <- as_tibble(data.frame(model = "Ten-Week", prediction = round(predict(m10, trump_2020), 1), ses = 2.709))
+twoweek <- as_tibble(data.frame(model = "Two-Week", prediction = round(predict(m2, trump_2020), 1), ses = 3.154))
+ensemble <- as_tibble(data.frame(model = "Ensemble", prediction = round(ensemble_pred, 1), ses = 0))
 plot3 <- rbind(fundamentals, tenweek, twoweek, ensemble) %>% 
   ggplot(aes(x=model, y=prediction, color=model, ymin=0, ymax=100)) +
   geom_point(aes(size=0.01)) +
+  geom_label_repel(aes(label=prediction), vjust=-5, segment.size=0) +
   geom_errorbar(aes(ymin = (prediction - 1.96*ses), ymax = (prediction + 1.96*ses), width=0.4, alpha=.5)) +
   theme_bw() + 
   theme(legend.position = "none") +
@@ -157,3 +159,4 @@ plot3 <- rbind(fundamentals, tenweek, twoweek, ensemble) %>%
   ggtitle("Figure 3: Ensemble and Component Model Predictions",
           subtitle = "With 95% Confidence Intervals") +
   ggsave("./Plots/week3plot3.png")
+plot3
