@@ -7,3 +7,5 @@ Hello! I am a senior at Harvard studying Government and Data Science, with a sec
 ## [Week 1: Introduction (9.12.20)](Posts/week1.md)
 
 ## [Week 2: The Economy (9.19.20)](Posts/week2.md)
+
+## [Week 3: Polling (9.26.20)](Posts/week3.md)
