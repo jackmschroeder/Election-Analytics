@@ -32,6 +32,8 @@ polls_20$state[is.na(polls_20$state)] <- "National"
 # Fig 1 - variation in pollster quality (use buckets of grades)
   
 polls_20 %>% 
+  # Keep this line to take out unrated pollsters.
+  #filter(fte_grade_buckets<7) %>% 
   group_by(pollster) %>% 
   summarize(grade = max(fte_grade_good)) %>% 
   ggplot(aes(x=grade)) +
@@ -45,6 +47,23 @@ polls_20 %>%
        caption = "'Good' = Grade of A/B or above,\n'OK' = Grade of B/C or above,\n'Not Great' = Grade Below B/C or No Rating") +
   theme_bw() + 
   ggsave("./Plots/week3plot1.png")
+
+polls_20 %>% 
+  # Keep this line to take out unrated pollsters.
+  filter(fte_grade_buckets<7) %>% 
+  group_by(pollster) %>% 
+  summarize(grade = max(fte_grade_buckets)) %>% 
+  ggplot(aes(x=grade)) +
+  geom_density(fill = "#ec8f9c") +
+  scale_x_continuous(breaks = seq(from = 0, to = 6, by = 1),
+                     labels = c("As", "A/B", "Bs", "B/C", "Cs", "C/D", "Ds")) +
+  xlab("FiveThirtyEight Grades") +
+  ylab("Density") +
+  labs(title = "FiveThirtyEight's Rating Distrubition",
+       subtitle = "Ratings Not Evenly Distributed",
+       caption = "Unrated Pollsters Filtered Out") +
+  theme_bw() + 
+  ggsave("./Plots/week3plot1a.png")
 
 # Fig 2 - variation between online/live calling (raw polls)
 

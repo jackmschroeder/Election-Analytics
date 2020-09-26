@@ -20,9 +20,29 @@ With all of this in mind, I wanted to answer four questions with this week's blo
 
 ### Pollster Ratings
 
+Each poll within the dataset of 2020 polls has its own rating from FiveThirtyEight. After filtering for general election polls and creating buckets of pollster ratings ("Good", "OK", and "Not Great"), I created a simple visualization of pollsters and their ratings.
+
 ![FiveThirtyEight Pollster Ratings](../Plots/week3plot1.png)
 
+There are three takeaways from this histogram:
+
+(1) Only a select number of pollsters (far less than one-third) qualify for a "Good" rating (above a B+).
+
+(2) There are many "Not Great" pollsters. This is mainly due to pollsters without ratings. Going forward, I will filter them out before making visualizations. For this historgram, however, including them helps make clear that there are a relatively small number of trusted pollsters.
+
+(3) With these in mind, it becomes clear that FiveThirtyEight's intentions with pollster ratings is for more of a *normal-looking distribution* instead of ratings evenly distributed across grades. This makes sense from a lot of angles, specifically in rewarding rigorous pollsters.
+
+To test this, I created the plot below.
+
+![Pollster Ratings by Methodology](../Plots/week3plot1a.png)
+
+FiveThirtyEight's most common rating (by far) is a B/C.
+
+### Methodology
+
 ![Pollster Ratings by Methodology](../Plots/week3plot2.png)
+
+A nice extension of this work would be to see if *national and state pollsters differ* in rating or methodology. This may be worth looking into next week.
 
 ### Model Building
 
