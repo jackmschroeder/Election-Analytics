@@ -9,7 +9,7 @@ national_a <- read_csv("./Data/econ.csv") %>%
   filter(year<2020) %>% 
   group_by(year) %>% 
   summarize(unemployment_nat_a = mean(unemployment),
-            RDI_a = mean(RDI_growth),
+            RDI_growth_a = mean(RDI_growth),
             inflation_a = mean(inflation),
             stock_a = mean(stock_close),
             GDP_growth_a = mean(GDP_growth_qt))
@@ -64,15 +64,25 @@ local_v <- read_csv("./Data/popvote_bystate_1948-2016.csv") %>%
 
 national <- national_v %>% 
   left_join(., national_a, by ="year") %>% 
-  left_join(., national_t, by = "year") %>% 
-  filter(year>1979)
+  left_join(., national_t, by = "year")
 
 local <- local_v %>% 
   left_join(., national_v, by="year") %>% 
   left_join(., national_a, by ="year") %>% 
   left_join(., national_t, by = "year") %>% 
   left_join(., local_a, by = c("year", "state")) %>% 
-  left_join(., local_t, by = c("year", "state")) %>% 
+  left_join(., local_t, by = c("year", "state"))
+
+national %>% 
+  write_csv("./Data/national_fundamentals.csv")
+
+local %>% 
+  write_csv("./Data/local_fundamentals.csv")
+
+national <- national %>% 
+  filter(year>1979)
+
+local <- local %>% 
   filter(year>1979)
 
 # Local model.
