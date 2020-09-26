@@ -1,4 +1,4 @@
-## Polling (9.26.20)
+## Polling and Pollsters (9.26.20)
 
 ### A Primer
 
