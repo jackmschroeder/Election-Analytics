@@ -64,8 +64,8 @@ After predicting 2020 values for all of these races, I created a visualization t
 
 There are three takeaways from the model:
 
-(1) The time-for-change model with fixed coefficients most closely matches my ensemble model. It's possible 2016 may have unfairly hurt the model due to Trump winning overall but losing the popular vote, since it still got the ultimate result correct.
+(1) The time-for-change model with fixed coefficients (31.4% Trump vote share) most closely matches my ensemble model (36.3%). It's possible 2016 may have unfairly hurt the model due to Trump winning overall but losing the popular vote, since it still got the ultimate result correct.
 
-(2) The only model that has a Trump popular vote victory within its confidence interval is the No Recession model. It's worth noting here, however, that I don't yet have a way to get standard errors for my ensemble model.
+(2) The only model that has a Trump popular vote victory within its confidence interval is the No Recession model (48.1%). It's worth noting here, however, that I don't yet have a way to get standard errors for my ensemble model.
 
 (3) The fundamentals in time-for-change seem to be outweighing the potential desire to continue a one-term president's tenure. It would be interesting to re-run these models assuming Trump is not an incumbent, but from here I can see it would predict an even larger Biden landslide.
