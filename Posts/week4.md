@@ -12,7 +12,7 @@ This week, I work with the famous *"time-for-change model"* and apply its predic
 
 ### Time-for-Change
 
-Alan Abramowitz, a political scientist at Emory, developed a "time-for-change" model back in 1988 to predict election outcomes. In its simplest form, it uses the following formula to predict incumbent party vote share (taken from Abramotiwz [2016]):
+Alan Abramowitz, a political scientist at Emory, developed a "time-for-change" model back in 1988 to predict election outcomes. In its simplest form, it uses the following formula to predict incumbent party vote share (taken from Abramowitz [2016]):
 
 $ 47.260 + 0.108 * Net Approval + 0.543 * Q2 GDP + 4.313 * Incumbent Dummy $
 
@@ -50,7 +50,7 @@ The ensemble model has a **mean squared error of only 1.60**, which is vastly be
 
 ### 2020 Predictions
 
-2020 is shaping up to be a strange year for fundamentals-based forecasting because of the large economic discrepencies in indicators like quarterly GDP growth. A model focusing on second-quarter GDP growth in particular seems susceptible to vast underestiamtions of the incumbent party vote share this year because of a uniquely extreme value (-33.3%). That alone leads me to believe the time-for-change model may struggle when compared to my ensemble in giving a plausible prediction for 2020.
+2020 is shaping up to be a strange year for fundamentals-based forecasting because of the large economic discrepancies in indicators like quarterly GDP growth. A model focusing on second-quarter GDP growth in particular seems susceptible to vast underestimations of the incumbent party vote share this year because of a uniquely extreme value (-33.3%). That alone leads me to believe the time-for-change model may struggle when compared to my ensemble in giving a plausible prediction for 2020.
 
 Indeed, after plugging in the most recent data on the 2020 race, the adjusted time-for-change model predicts a negative vote share for Trump (-10.6%). This is impossible, but since the adjusted model weighs second-quarter GDP growth more heavily (the coefficient in the adjusted model is around 3 times higher), at least I know *why* this is happening.
 
