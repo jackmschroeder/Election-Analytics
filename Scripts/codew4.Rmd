@@ -37,9 +37,9 @@ tfc_df <- popvote_df %>%
 
 # Create the time for change model.
 
-tfc_real <- lm(pv2p ~ net_approve + GDP_growth_qt + incumbent, data=tfc_df)
+tfc_adjusted <- lm(pv2p ~ net_approve + GDP_growth_qt + incumbent, data=tfc_df)
 
-summary(tfc_real)
+summary(tfc_adjusted)
 
 # Then make a table comparing coefficient values - fairly close.
 
@@ -51,9 +51,9 @@ actual <- popvote_df %>%
   filter(incumbent_party == TRUE) %>% 
   select(year, pv2p)
 
-predict(tfc_real)
+predict(tfc_adjusted)
 
-tfc_error <- data.frame(predictions = predict(tfc_real), actual = actual$pv2p, year = actual$year) %>% 
+tfc_error <- data.frame(predictions = predict(tfc_adjusted), actual = actual$pv2p, year = actual$year) %>% 
   mutate(diff2 = (actual - predictions)^2)
 
 mean(tfc_error$diff2)
@@ -110,23 +110,26 @@ trump_2020 <- read_csv("../Data/trump_2020.csv") %>%
          net_approve = -19,
          incumbent = TRUE)
 
-tfc_2020_base <- predict(tfc_real, trump_2020)
+tfc_2020_base <- predict(tfc_adjusted, trump_2020)
 ensemble_2020 <- predict(mprev_3, trump_2020)/3 + predict(m2_3, trump_2020)/3 + predict(m10_3, trump_2020)/3
 
 trump_2020_normalecon <- trump_2020 %>% 
   mutate(GDP_growth_qt = -10)
-tfc_2020_normalecon <- predict(tfc_real, trump_2020_normalecon)
+tfc_2020_normalecon <- predict(tfc_adjusted, trump_2020_normalecon)
 
 trump_2020_zerogrowth <- trump_2020 %>% 
   mutate(GDP_growth_qt = 0)
-tfc_2020_zerogrowth <- predict(tfc_real, trump_2020_zerogrowth)
+tfc_2020_zerogrowth <- predict(tfc_adjusted, trump_2020_zerogrowth)
+
+tfc_fixed <- 47.26 + 0.108 * -19 + 0.543 * -33.3 + 4.313*1
+tfc_2020_fixed_tibble <- as_tibble(data.frame(model = "TFC\n(Fixed Coefficients)", prediction = round(tfc_fixed, 1), ses = 3.26))
 
 ensemble_2020_tibble <- as_tibble(data.frame(model = "Ensemble\n(Annual GDP)", prediction = round(ensemble_2020, 1), ses = 0))
-tfc_2020_base_tibble <- as_tibble(data.frame(model = "TFC\n(Real Recession)", prediction = round(tfc_2020_base, 1), ses = 3.26))
+tfc_2020_base_tibble <- as_tibble(data.frame(model = "TFC\n(Adjusted Coefficients)", prediction = round(tfc_2020_base, 1), ses = 3.26))
 tfc_2020_normalecon_tibble <- as_tibble(data.frame(model = "TFC\n(Lighter Recession)", prediction = round(tfc_2020_normalecon, 1), ses = 3.26))
 tfc_2020_zerogrowth_tibble <- as_tibble(data.frame(model = "TFC\n(No Recession)", prediction = round(tfc_2020_zerogrowth, 1), ses = 3.26))
 
-comp_plot <- rbind(ensemble_2020_tibble, tfc_2020_base_tibble, tfc_2020_normalecon_tibble, tfc_2020_zerogrowth_tibble) %>% 
+comp_plot <- rbind(ensemble_2020_tibble, tfc_2020_fixed_tibble, tfc_2020_base_tibble, tfc_2020_normalecon_tibble, tfc_2020_zerogrowth_tibble) %>% 
   ggplot(aes(x=model, y=prediction, color=model, ymin=0, ymax=100)) +
   geom_point(aes(size=0.01)) +
   geom_label_repel(aes(label=prediction), vjust=-100, segment.size=0) +
@@ -137,7 +140,7 @@ comp_plot <- rbind(ensemble_2020_tibble, tfc_2020_base_tibble, tfc_2020_normalec
   geom_abline(slope=0, intercept=0, color="black", alpha=.7) +
   xlab("Model") +
   ylab("Predicted Trump Vote Share") +
-  ggtitle("Emsemble and Time-for-Change 2020 Predictions",
+  ggtitle("Ensemble and Time-for-Change 2020 Predictions",
           subtitle = "With 95% Confidence Intervals") +
   theme_bw() + 
   theme(legend.position = "none") +
@@ -145,6 +148,6 @@ comp_plot <- rbind(ensemble_2020_tibble, tfc_2020_base_tibble, tfc_2020_normalec
          width=7.29,
          height=4.51)
 
-
+comp_plot
 ```
 
