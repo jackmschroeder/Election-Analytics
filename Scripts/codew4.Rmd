@@ -7,7 +7,6 @@ output: html_document
 #knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
-library(stargazer)
 library(ggrepel)
 
 # Datasets read in
@@ -54,7 +53,10 @@ actual <- popvote_df %>%
 
 predict(tfc_real)
 
-tfc_error <- data.frame(predictions = predict(tfc_real), actual = actual$pv2p, year = actual$year)
+tfc_error <- data.frame(predictions = predict(tfc_real), actual = actual$pv2p, year = actual$year) %>% 
+  mutate(diff2 = (actual - predictions)^2)
+
+mean(tfc_error$diff2)
 
 ggplot(tfc_error, aes(x=predictions, y=actual)) +
   geom_text(aes(label=year)) +
@@ -62,7 +64,7 @@ ggplot(tfc_error, aes(x=predictions, y=actual)) +
   xlim(40, 60) +
   ylim(40, 60) +
   labs(title = "Evaluating the Time-for-Change Model", 
-       #subtitle = "Mean Squared Error of _", 
+       subtitle = "Mean Squared Error of 8.26", 
        x="Predicted Incumbent Party Vote Share", y="Actual Incumbent Party Vote Share") +
   theme_bw() + 
   ggsave("../Plots/week4plot1.png",
@@ -85,7 +87,10 @@ m2_3 <- lm(pv2p ~ avg_support_2 + margin_pct_lag_nat + RDI_growth_t + incumbent,
 summary(m2_3)
 
 model_3_predictions <- data.frame(fundamentals = predict(mprev_3), tenweek = predict(m10_3), twoweek = predict(m2_3), actual = actual$pv2p[actual$year>1968], year = actual$year[actual$year>1968]) %>% 
-  mutate(ensemble = fundamentals/3 + tenweek/3 + twoweek/3)
+  mutate(ensemble = fundamentals/3 + tenweek/3 + twoweek/3,
+         diff2 = ((actual-ensemble)^2))
+
+mean(model_3_predictions$diff2)
 
 ggplot(model_3_predictions, aes(x=ensemble, y=actual)) +
   geom_text(aes(label=year)) +
@@ -93,7 +98,7 @@ ggplot(model_3_predictions, aes(x=ensemble, y=actual)) +
   xlim(40, 60) +
   ylim(40, 60) +
   labs(title = "Evaluating the Ensemble Model", 
-       #subtitle = "Mean Squared Error of _", 
+       subtitle = "Mean Squared Error of 1.60", 
        x="Predicted Incumbent Party Vote Share", y="Actual Incumbent Party Vote Share") +
   theme_bw() + 
   ggsave("../Plots/week4plot2.png")
