@@ -69,3 +69,7 @@ There are three takeaways from the model:
 (2) The only model that has a Trump popular vote victory within its confidence interval is the No Recession model (48.1%). It's worth noting here, however, that I don't yet have a way to get standard errors for my ensemble model.
 
 (3) The fundamentals in time-for-change seem to be outweighing the potential desire to continue a one-term president's tenure. It would be interesting to re-run these models assuming Trump is not an incumbent, but from here I can see it would predict an even larger Biden landslide.
+
+### References
+
+Abramowitz, A. (2016). "Will Time for Change Mean Time for Trump?" *PS: Political Science & Politics* 49(4). October 2016. Accessed online.
