@@ -22,7 +22,7 @@ With this in mind, I adapted section code to create inputs for a time-for-change
 
 ![Time-for-Change Model](../Plots/week4plot1.png)
 
-Graphing the predicted values and the actual outcomes, the model seems to do a fair job of picking winners. However, the model has a *mean squared error of 8.26* and an **adjusted r-squared of only 0.6**.
+Graphing the predicted values and the actual outcomes, the model seems to do a fair job of picking winners. However, the model has a **mean squared error of 8.26** and an **adjusted r-squared of only 0.6**.
 
 There are also new coefficients, resulting in a different formula from above:
 
