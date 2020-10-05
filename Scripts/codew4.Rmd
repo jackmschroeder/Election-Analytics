@@ -41,10 +41,6 @@ tfc_adjusted <- lm(pv2p ~ net_approve + GDP_growth_qt + incumbent, data=tfc_df)
 
 summary(tfc_adjusted)
 
-# Then make a table comparing coefficient values - fairly close.
-
-# use GT
-
 # Graph the errors
 
 actual <- popvote_df %>% 
