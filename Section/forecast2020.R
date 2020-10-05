@@ -6,12 +6,12 @@ library(ggplot2)
 #####------------------------------------------------------#
 
 
-popvote_df    <- read_csv("popvote_1948-2016.csv")
-pvstate_df    <- read_csv("popvote_bystate_1948-2016.csv")
-economy_df    <- read_csv("econ.csv")
-approval_df   <- read_csv("approval_gallup_1941-2020.csv")
-pollstate_df  <- read_csv("pollavg_bystate_1968-2016.csv")
-fedgrants_df  <- read_csv("fedgrants_bystate_1988-2008.csv")
+popvote_df    <- read_csv("./Data/popvote_1948-2016.csv")
+pvstate_df    <- read_csv("./Data/popvote_bystate_1948-2016.csv")
+economy_df    <- read_csv("./Data/econ.csv")
+approval_df   <- read_csv("./Data/approval_gallup_1941-2020.csv")
+pollstate_df  <- read_csv("./Data/pollavg_bystate_1968-2016.csv")
+fedgrants_df  <- read_csv("./Data/fedgrants_bystate_1988-2008.csv")
 
 #####------------------------------------------------------#
 #####  Time-for-change model ####

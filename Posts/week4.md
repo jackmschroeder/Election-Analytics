@@ -4,4 +4,8 @@
 
 Under construction...
 
-# ![FiveThirtyEight Pollster Ratings](../Plots/week3plot1.png)
+![Time for Change Model](../Plots/week4plot1.png)
+
+![Ensemble Model](../Plots/week4plot2.png)
+
+![Comparing Models](../Plots/week4plot3.png)

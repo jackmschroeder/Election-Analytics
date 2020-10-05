@@ -1,4 +1,5 @@
 library(tidyverse)
+election_20 <- as.Date("11/3/20", "%m/%d/%Y")
 
 # Annual national data
 
@@ -111,3 +112,19 @@ model_3_data <- national %>%
               group_by(year, party) %>% 
               summarize(avg_support_2 = mean(avg_support))) %>% 
   write_csv("./Data/model_3.csv")
+
+# Trump data
+
+trump_2020 <- data.frame(unemployment_nat_t = 8.4, GDP_growth_a = -5.6, incumbent_party = TRUE, avg_support_2 = 0, RDI_growth_t = 0.005, margin_pct_lag_nat = -1.162)
+
+trump_support_10 <- polls_20 %>% 
+  filter(weeks_left == 10,
+         state == "National",
+         answer == "Trump",
+         fte_grade_buckets<4) %>% 
+  summarize(avg_support_10 = mean(pct))
+trump_2020 <- cbind(trump_2020, trump_support_10)
+trump_2020$avg_support_2 <- 43.2
+
+trump_2020 %>% 
+  write_csv("./Data/trump_2020.csv")

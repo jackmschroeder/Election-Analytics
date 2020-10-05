@@ -4,7 +4,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+#knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(stargazer)
@@ -24,20 +24,17 @@ fedgrants_df  <- read_csv("../Data/fedgrants_bystate_1988-2008.csv")
 tfc_df <- popvote_df %>%
   filter(incumbent_party) %>%
   select(year, candidate, party, pv, pv2p, incumbent) %>%
-  inner_join(
-    approval_df %>% 
-      group_by(year, president) %>% 
-      slice(1) %>% 
-      mutate(net_approve=approve-disapprove) %>%
-      select(year, incumbent_pres=president, net_approve, poll_enddate),
-    by="year"
-  ) %>%
-  inner_join(
-    economy_df %>%
-      filter(quarter == 2) %>%
-      select(GDP_growth_qt, year),
-    by="year"
-  )
+  inner_join(approval_df %>% 
+               group_by(year, president) %>% 
+               slice(1) %>% 
+               mutate(net_approve=approve-disapprove) %>%
+               select(year, incumbent_pres=president,
+                      net_approve, poll_enddate),
+             by="year") %>%
+  inner_join(economy_df %>%
+               filter(quarter == 2) %>%
+               select(GDP_growth_qt, year),
+             by="year")
 
 # Create the time for change model.
 
@@ -64,7 +61,13 @@ ggplot(tfc_error, aes(x=predictions, y=actual)) +
   geom_abline(slope=1, intercept=0, color="salmon") +
   xlim(40, 60) +
   ylim(40, 60) +
-  labs(title = "Evaluating the Time-for-Change Model", subtitle = "Mean Squared Error of _", x="Predicted Incumbent Party Vote Share", y="Actual Incumbent Party Vote Share")
+  labs(title = "Evaluating the Time-for-Change Model", 
+       #subtitle = "Mean Squared Error of _", 
+       x="Predicted Incumbent Party Vote Share", y="Actual Incumbent Party Vote Share") +
+  theme_bw() + 
+  ggsave("../Plots/week4plot1.png",
+         width=7.29,
+         height=4.51)
 
 # Compare to model from last week. Only change is incumbent_party into incumbent.
 
@@ -89,6 +92,54 @@ ggplot(model_3_predictions, aes(x=ensemble, y=actual)) +
   geom_abline(slope=1, intercept=0, color="salmon") +
   xlim(40, 60) +
   ylim(40, 60) +
-  labs(title = "Evaluating the Ensemble Model", subtitle = "Mean Squared Error of _", x="Predicted Incumbent Party Vote Share", y="Actual Incumbent Party Vote Share")
+  labs(title = "Evaluating the Ensemble Model", 
+       #subtitle = "Mean Squared Error of _", 
+       x="Predicted Incumbent Party Vote Share", y="Actual Incumbent Party Vote Share") +
+  theme_bw() + 
+  ggsave("../Plots/week4plot2.png")
+
+# Predict 2020 for both models
+
+trump_2020 <- read_csv("../Data/trump_2020.csv") %>% 
+  mutate(GDP_growth_qt = -33.3,
+         net_approve = -19,
+         incumbent = TRUE)
+
+tfc_2020_base <- predict(tfc_real, trump_2020)
+ensemble_2020 <- predict(mprev_3, trump_2020)/3 + predict(m2_3, trump_2020)/3 + predict(m10_3, trump_2020)/3
+
+trump_2020_normalecon <- trump_2020 %>% 
+  mutate(GDP_growth_qt = -10)
+tfc_2020_normalecon <- predict(tfc_real, trump_2020_normalecon)
+
+trump_2020_zerogrowth <- trump_2020 %>% 
+  mutate(GDP_growth_qt = 0)
+tfc_2020_zerogrowth <- predict(tfc_real, trump_2020_zerogrowth)
+
+ensemble_2020_tibble <- as_tibble(data.frame(model = "Ensemble\n(Annual GDP)", prediction = round(ensemble_2020, 1), ses = 0))
+tfc_2020_base_tibble <- as_tibble(data.frame(model = "TFC\n(Real Recession)", prediction = round(tfc_2020_base, 1), ses = 3.26))
+tfc_2020_normalecon_tibble <- as_tibble(data.frame(model = "TFC\n(Lighter Recession)", prediction = round(tfc_2020_normalecon, 1), ses = 3.26))
+tfc_2020_zerogrowth_tibble <- as_tibble(data.frame(model = "TFC\n(No Recession)", prediction = round(tfc_2020_zerogrowth, 1), ses = 3.26))
+
+comp_plot <- rbind(ensemble_2020_tibble, tfc_2020_base_tibble, tfc_2020_normalecon_tibble, tfc_2020_zerogrowth_tibble) %>% 
+  ggplot(aes(x=model, y=prediction, color=model, ymin=0, ymax=100)) +
+  geom_point(aes(size=0.01)) +
+  geom_label_repel(aes(label=prediction), vjust=-100, segment.size=0) +
+  geom_errorbar(aes(ymin = (prediction - 1.96*ses), ymax = (prediction + 1.96*ses), width=0.4, alpha=.5)) +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  geom_abline(slope=0, intercept=50, color="salmon", alpha=.5) +
+  geom_abline(slope=0, intercept=0, color="black", alpha=.7) +
+  xlab("Model") +
+  ylab("Predicted Trump Vote Share") +
+  ggtitle("Emsemble and Time-for-Change 2020 Predictions",
+          subtitle = "With 95% Confidence Intervals") +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  ggsave("../Plots/week4plot3.png",
+         width=7.29,
+         height=4.51)
+
+
 ```
 
