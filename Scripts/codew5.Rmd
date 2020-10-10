@@ -11,11 +11,11 @@ output:
 library(tidyverse)
 library(geofacet)
 
-model_local <- read_csv("./Data/model_input_local.csv") %>% 
+model_local <- read_csv("../Data/model_input_local.csv") %>% 
   filter(incumbent_party == TRUE,
          year > 1973)
 
-ads_20_r <- read_csv("./Data/ads_2020.csv") %>% 
+ads_20_r <- read_csv("../Data/ads_2020.csv") %>% 
   select(-biden_airings) %>%
   mutate(period = case_when(period_startdate == "2020-04-09" ~ "Total",
                             TRUE ~ "September"),
@@ -23,7 +23,7 @@ ads_20_r <- read_csv("./Data/ads_2020.csv") %>%
   rename(airings = trump_airings)
 
 
-ads_20_d <- read_csv("./Data/ads_2020.csv") %>% 
+ads_20_d <- read_csv("../Data/ads_2020.csv") %>% 
   select(-trump_airings) %>%
   mutate(period = case_when(period_startdate == "2020-04-09" ~ "Total",
                             TRUE ~ "September"),
@@ -72,7 +72,7 @@ ads_20_party %>%
           subtitle = "Airings are logged for interpretability") +
   scale_y_continuous(breaks = c(0, 3, 5),
                      labels = c("0", "1k", "100k")) +
-  ggsave("./Plots/week5plot1.png")
+  ggsave("../Plots/week5plot1.png")
 
 
 ```
@@ -123,7 +123,7 @@ stargazer(m_fund, m_ten, m_two, m_ten_ad, m_two_ad,
 # Then compare PA result to TF simulations and comment on them
 # Extension has to be a better model next week
 
-ads_20_data <- read_csv("./Data/ads_2020.csv") %>% 
+ads_20_data <- read_csv("../Data/ads_2020.csv") %>% 
   select(-biden_airings) %>%
   mutate(trump_pct = trump_airings/total_airings,
          period = case_when(period_startdate == "2020-04-09" ~ "Total",
@@ -136,14 +136,14 @@ ads_20_data <- read_csv("./Data/ads_2020.csv") %>%
 ads_20_data$state <- state.name[match(ads_20_data$state, state.abb)]
 
 
-trump_2020 <- read_csv("./Data/trump_2020.csv") %>% 
+trump_2020 <- read_csv("../Data/trump_2020.csv") %>% 
   mutate(GDP_growth_qt = -33.3,
          net_approve = -19,
          incumbent = TRUE,
          year = 2020) %>% 
   select(-c(avg_support_10, avg_support_2))
 
-polls_20 <- read_csv("./Data/polls_20.csv")
+polls_20 <- read_csv("../Data/polls_20.csv")
 
 trump_support_10 <- polls_20 %>% 
   filter(weeks_left > 6 & weeks_left < 15,
@@ -156,7 +156,7 @@ trump_support_10 <- polls_20 %>%
 
 # Term national data
 
-data_2020 <- read_csv("./Data/local.csv") %>% 
+data_2020 <- read_csv("../Data/local.csv") %>% 
   rename(year = Year,
          state = `State and area`) %>% 
   filter(year>2015) %>% 
@@ -215,7 +215,7 @@ comp_plot <- rbind(pa_fund, pa_ten, pa_two, pa_ten_ad, pa_two_ad, pa_ensemble) %
           subtitle = "State Models are Wonky") +
   theme_bw() + 
   theme(legend.position = "none") +
-  ggsave("./Plots/week5plot2.png",
+  ggsave("../Plots/week5plot2.png",
          width=7.29,
          height=4.51)
 
