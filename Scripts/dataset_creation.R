@@ -115,6 +115,22 @@ model_3_data <- national %>%
               summarize(avg_support_2 = mean(avg_support))) %>% 
   write_csv("./Data/model_3.csv")
 
+ads_df <- read_csv("./Data/ad_campaigns_2000-2012.csv") %>% 
+  mutate(total_cost_inf20 = case_when(cycle == 2016 ~ total_cost*1.078,
+                                      cycle == 2012 ~ total_cost*1.136,
+                                      cycle == 2008 ~ total_cost*1.233,
+                                      cycle == 2004 ~ total_cost*1.390,
+                                      cycle == 2000 ~ total_cost*1.535)) %>% 
+  filter(after_primary == 1 | is.na(after_primary)) %>% 
+  group_by(cycle, state, party) %>% 
+  summarize(total_cost = sum(total_cost_inf20)) %>% 
+  rename(year = cycle)
+
+ads_df$state <- state.name[match(ads_df$state, state.abb)]
+
+ads_df <- ads_df %>% 
+  filter(state %in% local$state)
+
 model_input_local <- local %>% 
   full_join(avg_state %>% 
              filter(weeks_left == 10) %>% 
@@ -124,6 +140,22 @@ model_input_local <- local %>%
               filter(weeks_left < 2) %>% 
               group_by(year, state, party) %>% 
               summarize(avg_support_2 = mean(avg_poll))) %>% 
+  left_join(., ads_df,
+            by = c("year", "state", "party")) %>% 
+  mutate(total_cost = case_when(year>1999 & is.na(total_cost) ~ 0,
+                                TRUE ~ total_cost)) %>% 
+  filter(state %in% local$state) %>% 
+  select(-c(margin_pct_r, margin_pct_d, margin_pct_lag_d, margin_pct_lag_r))
+
+lag <- model_input_local %>% 
+  mutate(year = year + 4) %>% 
+  select(state, party, year, R_pv2p, D_pv2p) %>% 
+  rename(R_pv2p_lag = R_pv2p, D_pv2p_lag = D_pv2p)
+
+model_input_local <- model_input_local %>% 
+  left_join(., lag, by = c("state", "party", "year")) %>% 
+  mutate(pv2p_lag = case_when(party == "republican" ~ R_pv2p_lag,
+                                    TRUE ~ D_pv2p_lag)) %>% 
   write_csv("./Data/model_input_local.csv")
 
 # Trump data

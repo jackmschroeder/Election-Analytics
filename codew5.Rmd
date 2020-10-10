@@ -1,6 +1,8 @@
 ---
 title: "codew5"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -11,7 +13,7 @@ library(geofacet)
 
 model_local <- read_csv("./Data/model_input_local.csv") %>% 
   filter(incumbent_party == TRUE,
-         year > 1968)
+         year > 1973)
 
 ads_20_r <- read_csv("./Data/ads_2020.csv") %>% 
   select(-biden_airings) %>%
@@ -30,30 +32,32 @@ ads_20_d <- read_csv("./Data/ads_2020.csv") %>%
 
 ads_20_party <- rbind(ads_20_r, ads_20_d)
 
+# Data cleaning I exported to my dataset file
 
-ads_df <- read_csv("./Data/ad_campaigns_2000-2012.csv") %>% 
-  mutate(total_cost_inf20 = case_when(cycle == 2016 ~ total_cost*1.078,
-                                      cycle == 2012 ~ total_cost*1.136,
-                                      cycle == 2008 ~ total_cost*1.233,
-                                      cycle == 2004 ~ total_cost*1.390,
-                                      cycle == 2000 ~ total_cost*1.535)) %>% 
-  filter(after_primary == 1 | is.na(after_primary)) %>% 
-  group_by(cycle, state, party) %>% 
-  summarize(total_cost = sum(total_cost_inf20)) %>% 
-  rename(year = cycle)
 
-ads_df$state <- state.name[match(ads_df$state, state.abb)]
-
-ads_df <- ads_df %>% 
-    filter(state %in% model_input_local$state)
-
-model_input_local %>% 
-  left_join(., ads_df,
-            by = c("year", "state", "party"))
+# ads_df <- read_csv("./Data/ad_campaigns_2000-2012.csv") %>% 
+#   mutate(total_cost_inf20 = case_when(cycle == 2016 ~ total_cost*1.078,
+#                                       cycle == 2012 ~ total_cost*1.136,
+#                                       cycle == 2008 ~ total_cost*1.233,
+#                                       cycle == 2004 ~ total_cost*1.390,
+#                                       cycle == 2000 ~ total_cost*1.535)) %>% 
+#   filter(after_primary == 1 | is.na(after_primary)) %>% 
+#   group_by(cycle, state, party) %>% 
+#   summarize(total_cost = sum(total_cost_inf20)) %>% 
+#   rename(year = cycle)
+# 
+# ads_df$state <- state.name[match(ads_df$state, state.abb)]
+# 
+# ads_df <- ads_df %>% 
+#     filter(state %in% model_input_local$state)
+# 
+# model_input_local %>% 
+#   left_join(., ads_df,
+#             by = c("year", "state", "party"))
 
 ```
 
-```{r}
+```{r, include=FALSE}
 ads_20_party %>% 
   filter(period == "Total") %>% 
   ggplot(aes(y=log10(airings), x=Party, fill=Party)) +
@@ -73,26 +77,149 @@ ads_20_party %>%
 
 ```
 
-```{r}
+```{r, include=FALSE, cache=""}
 # Make advertising models
 
-mprev_3 <- lm(pv2p ~ unemployment_loc_t + GDP_growth_a + incumbent, data=model_local)
-summary(mprev_3)
+m_fund <- lm(pv2p ~ unemployment_loc_t + GDP_growth_a + incumbent, data=model_local)
+summary(m_fund)
 
-m10_3 <- lm(pv2p ~ avg_support_10 + margin_pct_lag_nat + RDI_growth_t + incumbent, data=model_local)
-summary(m10_3)
+m_ten <- lm(pv2p ~ avg_support_10 + margin_pct_lag_nat + RDI_growth_t + incumbent, data=model_local)
+summary(m_ten)
 
-m2_3 <- lm(pv2p ~ avg_support_2 + margin_pct_lag_nat + RDI_growth_t + incumbent, data=model_local)
-summary(m2_3)
+m_two <- lm(pv2p ~ avg_support_2 + margin_pct_lag_nat + RDI_growth_t + incumbent, data=model_local)
+summary(m_two)
+
+m_ten_ad <- lm(pv2p ~ avg_support_10 + margin_pct_lag_nat + RDI_growth_t + total_cost + incumbent, data=model_local)
+summary(m_ten_ad)
+
+m_two_ad <- lm(pv2p ~ avg_support_2 + margin_pct_lag_nat + total_cost + incumbent + RDI_growth_t, data=model_local)
+summary(m_two_ad)
 
 ```
 
-```{r}
-# Compare models and graph differences
+```{r, echo=FALSE, results='asis'}
+# Compare models
+
+m_fund_mse <- mean(m_fund$residuals^2)
+m_ten_mse <- mean(m_ten$residuals^2)
+m_two_mse <- mean(m_two$residuals^2)
+m_ten_ad_mse <- mean(m_ten_ad$residuals^2)
+m_two_ad_mse <- mean(m_two_ad$residuals^2)
+
+library(stargazer)
+stargazer(m_fund, m_ten, m_two, m_ten_ad, m_two_ad,
+          title = "Evaluating State-by-State Models",
+          header = FALSE,
+          covariate.labels = c("Local Unemployment (Term)", "GDP Growth (Year)", "Average Support (10-Week)", "Average Support (2-Week)", "Lagged Vote Share (National)", "RDI Growth (Term)", "Advertising Costs", "Incumbent"),
+          dep.var.labels = "Incumbent Two-Party Vote Share",
+          omit.stat = c("f", "rsq"),
+          notes.align = "l",
+          column.sep.width = "1pt",
+          font.size = "small",
+          add.lines = list(c("Mean Squared Error", "8.55", "1.95", "2.34", "0.25", "0.36")))
 ```
 
 ```{r}
 # Then compare PA result to TF simulations and comment on them
 # Extension has to be a better model next week
+
+ads_20_data <- read_csv("./Data/ads_2020.csv") %>% 
+  select(-biden_airings) %>%
+  mutate(trump_pct = trump_airings/total_airings,
+         period = case_when(period_startdate == "2020-04-09" ~ "Total",
+                            TRUE ~ "September"),
+         party = "republican",
+         total_cost = trump_pct*total_cost) %>% 
+  filter(period == "September") %>% 
+  select(-c(period, total_airings, period_startdate, period_enddate, trump_airings, trump_pct, party))
+
+ads_20_data$state <- state.name[match(ads_20_data$state, state.abb)]
+
+
+trump_2020 <- read_csv("./Data/trump_2020.csv") %>% 
+  mutate(GDP_growth_qt = -33.3,
+         net_approve = -19,
+         incumbent = TRUE,
+         year = 2020) %>% 
+  select(-c(avg_support_10, avg_support_2))
+
+polls_20 <- read_csv("./Data/polls_20.csv")
+
+trump_support_10 <- polls_20 %>% 
+  filter(weeks_left > 6 & weeks_left < 15,
+         answer == "Trump",
+         fte_grade_buckets<4) %>% 
+  group_by(state) %>% 
+  summarize(avg_support_10 = mean(pct)) %>% 
+  mutate(state = case_when(state == "Nebraska CD-2" ~ "Nebraska",
+                           TRUE ~ state))
+
+# Term national data
+
+data_2020 <- read_csv("./Data/local.csv") %>% 
+  rename(year = Year,
+         state = `State and area`) %>% 
+  filter(year>2015) %>% 
+  mutate(term = trunc((year-1949)/4, 1)) %>% 
+  filter(term>16) %>% 
+  group_by(state, term) %>% 
+  summarize(year = max(year),
+            unemployment_loc_t = mean(Unemployed_prce)) %>% 
+  select(-term) %>% 
+  left_join(., ads_20_data,
+            by = "state") %>% 
+  left_join(., trump_support_10,
+            by = "state") %>% 
+  left_join(., trump_2020,
+            by = "year") %>% 
+  mutate(avg_support_2 = 42) %>% 
+  filter(state %in% model_local$state)
+
+data_2020$total_cost[is.na(data_2020$total_cost)] <- 0
+data_2020$avg_support_10[is.na(data_2020$avg_support_10)] <- data_2020$avg_support_2
+
+data_2020
+
+results <- data.frame(m_fund = predict(m_fund, data_2020), 
+                      m_ten = predict(m_ten, data_2020), 
+                      m_two = predict(m_two, data_2020), 
+                      m_ten_ad = predict(m_ten_ad, data_2020), 
+                      m_two_ad = predict(m_two_ad, data_2020), 
+                      state = data_2020$state)%>% 
+  mutate(ensemble = m_fund/5 + m_ten_ad/5 + m_two_ad/5 + m_ten/5 + m_two/5) %>% 
+  filter(state == "Pennsylvania")
+
+pa_fund <- as_tibble(data.frame(model = "Fundamental\n(Recession)", 
+                     prediction = round(results$m_fund, 1), 
+                     ses = 2.936))
+pa_ten <- as_tibble(data.frame(model = "Polls\n(Ten-Week)", prediction = round(results$m_ten, 1), ses = 1.426))
+pa_two <- as_tibble(data.frame(model = "Polls\n(Two-Week)", prediction = round(results$m_two, 1), ses = 1.541))
+pa_ten_ad <- as_tibble(data.frame(model = "Polls + Ads\n(Ten-Week)", prediction = round(results$m_ten_ad, 1), ses = 0.5209))
+pa_two_ad <- as_tibble(data.frame(model = "Polls + Ads\n(Two-Week)", prediction = round(results$m_two_ad, 1), ses = 0.6107))
+pa_ensemble <- as_tibble(data.frame(model = "Ensemble",
+                                    prediction = round(results$ensemble, 1),
+                                    ses = 1.406))
+
+comp_plot <- rbind(pa_fund, pa_ten, pa_two, pa_ten_ad, pa_two_ad, pa_ensemble) %>% 
+  ggplot(aes(x=model, y=prediction, color=model, ymin=0, ymax=100)) +
+  geom_point(aes(size=0.01)) +
+  geom_label_repel(aes(label=prediction), vjust=-100, segment.size=0) +
+  geom_errorbar(aes(ymin = (prediction - 1.96*ses), ymax = (prediction + 1.96*ses), width=0.4, alpha=.5)) +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  geom_abline(slope=0, intercept=50, color="salmon", alpha=.5) +
+  geom_abline(slope=0, intercept=0, color="black", alpha=.7) +
+  xlab("Model") +
+  ylab("Predicted Trump Vote Share") +
+  ggtitle("Pennsylvania 2020 Predictions",
+          subtitle = "State Models are Wonky") +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  ggsave("./Plots/week5plot2.png",
+         width=7.29,
+         height=4.51)
+
+# Ad data supremely messes up the model - state by state a bad idea for linear regression
+
 ```
 
