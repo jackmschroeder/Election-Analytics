@@ -1,0 +1,98 @@
+---
+title: "codew5"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(geofacet)
+
+model_local <- read_csv("./Data/model_input_local.csv") %>% 
+  filter(incumbent_party == TRUE,
+         year > 1968)
+
+ads_20_r <- read_csv("./Data/ads_2020.csv") %>% 
+  select(-biden_airings) %>%
+  mutate(period = case_when(period_startdate == "2020-04-09" ~ "Total",
+                            TRUE ~ "September"),
+         Party = "Republican") %>% 
+  rename(airings = trump_airings)
+
+
+ads_20_d <- read_csv("./Data/ads_2020.csv") %>% 
+  select(-trump_airings) %>%
+  mutate(period = case_when(period_startdate == "2020-04-09" ~ "Total",
+                            TRUE ~ "September"),
+         Party = "Democrat") %>% 
+  rename(airings = biden_airings)
+
+ads_20_party <- rbind(ads_20_r, ads_20_d)
+
+
+ads_df <- read_csv("./Data/ad_campaigns_2000-2012.csv") %>% 
+  mutate(total_cost_inf20 = case_when(cycle == 2016 ~ total_cost*1.078,
+                                      cycle == 2012 ~ total_cost*1.136,
+                                      cycle == 2008 ~ total_cost*1.233,
+                                      cycle == 2004 ~ total_cost*1.390,
+                                      cycle == 2000 ~ total_cost*1.535)) %>% 
+  filter(after_primary == 1 | is.na(after_primary)) %>% 
+  group_by(cycle, state, party) %>% 
+  summarize(total_cost = sum(total_cost_inf20)) %>% 
+  rename(year = cycle)
+
+ads_df$state <- state.name[match(ads_df$state, state.abb)]
+
+ads_df <- ads_df %>% 
+    filter(state %in% model_input_local$state)
+
+model_input_local %>% 
+  left_join(., ads_df,
+            by = c("year", "state", "party"))
+
+```
+
+```{r}
+ads_20_party %>% 
+  filter(period == "Total") %>% 
+  ggplot(aes(y=log10(airings), x=Party, fill=Party)) +
+  geom_col() +
+  facet_geo(~state) +
+  scale_x_discrete(labels = c("D", "R")) +
+  scale_fill_manual(values = c("dodgerblue", "salmon")) +
+  theme_bw() +
+  xlab("") +
+  ylab("Logged # of Airings") +
+  ggtitle("2020 Election Ads",
+          subtitle = "Airings are logged for interpretability") +
+  scale_y_continuous(breaks = c(0, 3, 5),
+                     labels = c("0", "1k", "100k")) +
+  ggsave("./Plots/week5plot1.png")
+
+
+```
+
+```{r}
+# Make advertising models
+
+mprev_3 <- lm(pv2p ~ unemployment_loc_t + GDP_growth_a + incumbent, data=model_local)
+summary(mprev_3)
+
+m10_3 <- lm(pv2p ~ avg_support_10 + margin_pct_lag_nat + RDI_growth_t + incumbent, data=model_local)
+summary(m10_3)
+
+m2_3 <- lm(pv2p ~ avg_support_2 + margin_pct_lag_nat + RDI_growth_t + incumbent, data=model_local)
+summary(m2_3)
+
+```
+
+```{r}
+# Compare models and graph differences
+```
+
+```{r}
+# Then compare PA result to TF simulations and comment on them
+# Extension has to be a better model next week
+```
+

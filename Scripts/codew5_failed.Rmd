@@ -1,0 +1,355 @@
+---
+title: "codew4"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+
+## Forecasting techniques / insights from the advertising week
+
+library(tidyverse)
+library(geofacet)
+
+#####------------------------------------------------------#
+##### Read and merge data ####
+#####------------------------------------------------------#
+
+pvstate_df    <- read_csv("../Data/popvote_bystate_1948-2016.csv")
+economy_df    <- read_csv("../Data/econ.csv")
+pollstate_df  <- read_csv("../Data/pollavg_bystate_1968-2016.csv")
+ads20_df <- read_csv("../Data/ads_2020.csv")
+vep_df <- read_csv("../Data/vep_1980-2016.csv")
+poll20_df <- read_csv("../Data/polls_20.csv")
+
+poll_pvstate_df <- pvstate_df %>%
+  inner_join(
+    pollstate_df %>% 
+      filter(weeks_left == 5)
+      # group_by(state, year) %>%
+      # top_n(1, poll_date)
+  ) %>% 
+  inner_join(vep_df)
+poll_pvstate_df$D_pv <- (poll_pvstate_df$D / poll_pvstate_df$total)*100
+poll_pvstate_df$R_pv <- (poll_pvstate_df$R / poll_pvstate_df$total)*100
+poll_pvstate_df$state <- state.abb[match(poll_pvstate_df$state, state.name)]
+
+#####------------------------------------------------------#
+##### Map of univariate poll-based state forecasts ####
+#####------------------------------------------------------#
+
+state_forecast <- list()
+state_forecast_outputs <- data.frame()
+for (s in unique(poll_pvstate_df$state)) {
+  state_forecast[[s]]$dat_D <- poll_pvstate_df %>% 
+    filter(state == s, party == "democrat")
+  state_forecast[[s]]$mod_D <- lm(D_pv ~ avg_poll, 
+                                  state_forecast[[s]]$dat_D)
+  
+  state_forecast[[s]]$dat_R <- poll_pvstate_df %>% 
+    filter(state == s, party == "republican")  
+  state_forecast[[s]]$mod_R <- lm(R_pv ~ avg_poll, 
+                                  state_forecast[[s]]$dat_R)
+  if (nrow(state_forecast[[s]]$dat_R) > 2) {
+    state_forecast_outputs <- rbind(
+      state_forecast_outputs,
+      rbind(
+        cbind.data.frame(
+          intercept = summary(state_forecast[[s]]$mod_D)$coefficients[1,1],
+          intercept_se = summary(state_forecast[[s]]$mod_D)$coefficients[1,2],
+          slope = summary(state_forecast[[s]]$mod_D)$coefficients[2,1],
+          state = s, party = "democrat"),
+        cbind.data.frame(
+          intercept = summary(state_forecast[[s]]$mod_R)$coefficients[1,1],
+          intercept_se = summary(state_forecast[[s]]$mod_R)$coefficients[1,2],
+          slope = summary(state_forecast[[s]]$mod_R)$coefficients[2,1],
+          state = s, party = "republican")
+      )
+    )
+  }
+}
+
+## graphs: polls in different states / parties different levels 
+##         of strength / significance of outcome
+state_forecast_trends <- state_forecast_outputs %>% ##TODO: maybe place this above
+  mutate(`0` = intercept,
+         `25` = intercept + slope*25,
+         `50` = intercept + slope*50,
+         `75` = intercept + slope*75,
+         `100` = intercept + slope*100) %>%
+  select(-intercept, -slope) %>%
+  gather(x, y, -party, -state, -intercept_se) %>%
+  mutate(x = as.numeric(x))
+  
+## Q: what's wrong with this map?
+## A: (1) no polls in some states 
+##    (2) very high variance for some states / negative slopes 
+##    (3) y not always in [0,100] range
+ggplot(state_forecast_trends, aes(x=x, y=y, ymin=y-intercept_se, ymax=y+intercept_se)) + 
+  facet_geo(~ state) +
+  geom_line(aes(color = party)) + 
+  geom_ribbon(aes(fill = party), alpha=0.5, color=NA) +
+  coord_cartesian(ylim=c(0, 100)) +
+  scale_color_manual(values = c("blue", "red")) +
+  scale_fill_manual(values = c("blue", "red")) +
+  xlab("hypothetical poll support") +
+  ylab("predicted voteshare\n(pv = A + B * poll)") +
+  ggtitle("") +
+  theme_bw()
+
+
+#####------------------------------------------------------#
+##### Map of PROBABILISTIC univariate poll-based state forecasts ####
+#####------------------------------------------------------#
+
+state_glm_forecast <- list()
+state_glm_forecast_outputs <- data.frame()
+for (s in unique(poll_pvstate_df$state)) {
+  
+  state_glm_forecast[[s]]$dat_D <- poll_pvstate_df %>% 
+    filter(state == s, party == "democrat")
+  state_glm_forecast[[s]]$mod_D <- glm(cbind(D, VEP - D) ~ avg_poll, 
+                                       state_glm_forecast[[s]]$dat_D,
+                                       family = binomial(link="logit"))
+
+  state_glm_forecast[[s]]$dat_R <- poll_pvstate_df %>% 
+    filter(state == s, party == "republican")  
+  state_glm_forecast[[s]]$mod_R <- glm(cbind(R, VEP - R) ~ avg_poll, 
+                                       state_glm_forecast[[s]]$dat_R,
+                                       family = binomial(link="logit"))
+  
+  if (nrow(state_glm_forecast[[s]]$dat_R) > 2) {
+    for (hypo_avg_poll in seq(from=0, to=100, by=10)) {
+      Dpred_voteprob <- predict(state_glm_forecast[[s]]$mod_D, 
+                               newdata=data.frame(avg_poll=hypo_avg_poll), se=T, type="response")
+      Dpred_q <- qt(0.975, df = df.residual(state_glm_forecast[[s]]$mod_D)) ## used in pred interval formula
+        
+      Rpred_voteprob <- predict(state_glm_forecast[[s]]$mod_R, 
+                               newdata=data.frame(avg_poll=hypo_avg_poll), se=T, type="response")
+      Rpred_q <- qt(0.975, df = df.residual(state_glm_forecast[[s]]$mod_R)) ## used in pred interval formula
+
+      state_glm_forecast_outputs <- rbind(
+        state_glm_forecast_outputs,
+        cbind.data.frame(state = s, party = "democrat", x = hypo_avg_poll, 
+                         y = Dpred_voteprob$fit*100, 
+                         ymin = (Dpred_voteprob$fit - Rpred_q*Dpred_voteprob$se.fit)*100,
+                         ymax = (Dpred_voteprob$fit + Rpred_q*Dpred_voteprob$se.fit)*100),
+        cbind.data.frame(state = s, party = "republican", x = hypo_avg_poll, 
+                         y = Rpred_voteprob$fit*100, 
+                         ymin = (Rpred_voteprob$fit - Rpred_q*Rpred_voteprob$se.fit)*100,
+                         ymax = (Rpred_voteprob$fit + Rpred_q*Rpred_voteprob$se.fit)*100)
+      )
+    }
+  }
+}
+
+## graphs: polls in different states / parties different levels 
+##         of strength / significance of outcome
+ggplot(state_glm_forecast_outputs, aes(x=x, y=y, ymin=ymin, ymax=ymax)) + 
+  facet_geo(~ state) +
+  geom_line(aes(color = party)) + 
+  geom_ribbon(aes(fill = party), alpha=0.5, color=NA) +
+  coord_cartesian(ylim=c(0, 100)) +
+  scale_color_manual(values = c("blue", "red")) +
+  scale_fill_manual(values = c("blue", "red")) +
+  xlab("hypothetical poll support") +
+  ylab('probability of state-eligible voter voting for party') +
+  theme_bw() #+
+  #ggsave("../Plots/section5.png")
+
+#####------------------------------------------------------#
+##### Simulating a distribution of election results (PA) ####
+#####------------------------------------------------------#
+
+## Get relevant data
+VEP_PA_2020 <- as.integer(vep_df$VEP[vep_df$state == "Pennsylvania" & vep_df$year == 2016])
+
+PA_R <- poll_pvstate_df %>% filter(state=="PA", party=="republican")
+PA_D <- poll_pvstate_df %>% filter(state=="PA", party=="democrat")
+
+## Fit D and R models
+PA_R_glm <- glm(cbind(R, VEP-R) ~ avg_poll, PA_R, family = binomial)
+PA_D_glm <- glm(cbind(D, VEP-D) ~ avg_poll, PA_D, family = binomial)
+
+## Get predicted draw probabilities for D and R
+prob_Rvote_PA_2020 <- predict(PA_R_glm, newdata = data.frame(avg_poll=44.5), type="response")[[1]]
+prob_Dvote_PA_2020 <- predict(PA_D_glm, newdata = data.frame(avg_poll=50), type="response")[[1]]
+
+## Get predicted distribution of draws from the population
+sim_Rvotes_PA_2020 <- rbinom(n = 10000, size = VEP_PA_2020, prob = prob_Rvote_PA_2020)
+sim_Dvotes_PA_2020 <- rbinom(n = 10000, size = VEP_PA_2020, prob = prob_Dvote_PA_2020)
+
+## Simulating a distribution of election results: Biden PA PV
+hist(sim_Dvotes_PA_2020, xlab="predicted turnout draws for Biden\nfrom 10,000 binomial process simulations", breaks=100)
+
+## Simulating a distribution of election results: Trump PA PV
+hist(sim_Rvotes_PA_2020, xlab="predicted turnout draws for Trump\nfrom 10,000 binomial process simulations", breaks=100)
+
+## Simulating a distribution of election results: Biden win margin
+sim_elxns_PA_2020 <- ((sim_Dvotes_PA_2020-sim_Rvotes_PA_2020)/(sim_Dvotes_PA_2020+sim_Rvotes_PA_2020))*100
+hist(sim_elxns_PA_2020, xlab="predicted draws of Biden win margin (% pts)\nfrom 10,000 binomial process simulations", xlim=c(2, 7.5))
+
+
+
+
+
+```
+
+```{r}
+vep_df_four <- vep_df %>% 
+  mutate(year = year+4)
+
+poll20avg_df <- poll20_df %>% 
+  mutate(year = cycle,
+         party = case_when(candidate_party == "REP" ~ "republican",
+                           TRUE ~ "democrat"),
+         candidate_name = case_when(party == "republican" ~ "Donald Trump",
+                           TRUE ~ "Joseph R. Biden")) %>% 
+  select(-cycle, -candidate_party) %>% 
+  group_by(year, state, party, candidate_name) %>% 
+  summarize(avg_poll = mean(pct)) %>% 
+  filter(party %in% c("republican", "democrat")) %>% 
+  mutate(state = case_when(state %in% c("Nebraska", "Nebraska CD-1", "Nebraska CD-2") ~ "Nebraska",
+                           state %in% c("Maine", "Maine CD-1", "Maine CD-2") ~ "Maine",
+                           TRUE ~ state)) %>% 
+  filter(state != "National") %>% 
+  group_by(year, state, party, candidate_name) %>% 
+  summarize(avg_poll = mean(avg_poll)) %>% 
+  left_join(vep_df_four,
+             by = c("state", "year"))
+
+poll20avg_df$state <- state.abb[match(poll20avg_df$state, state.name)]
+
+#poll20_pvstate_df <- poll_pvstate_df %>% 
+#  full_join(poll20avg_df,
+#            by = c("state", "year", "party", "candidate_name", "avg_poll", "VEP", "VAP"))
+
+state_glm_forecast <- list()
+state_glm_forecast_outputs <- data.frame()
+for (s in unique(poll_pvstate_df$state)) {
+  
+  state_glm_forecast[[s]]$dat_D <- poll_pvstate_df %>% 
+    filter(state == s, party == "democrat")
+  state_glm_forecast[[s]]$mod_D <- glm(cbind(D, VEP - D) ~ avg_poll, 
+                                       state_glm_forecast[[s]]$dat_D,
+                                       family = binomial(link="logit"))
+
+  state_glm_forecast[[s]]$dat_R <- poll_pvstate_df %>% 
+    filter(state == s, party == "republican")  
+  state_glm_forecast[[s]]$mod_R <- glm(cbind(R, VEP - R) ~ avg_poll, 
+                                       state_glm_forecast[[s]]$dat_R,
+                                       family = binomial(link="logit"))
+  
+  if (nrow(state_glm_forecast[[s]]$dat_R) > 2) {
+    for (hypo_avg_poll in seq(from=0, to=100, by=10)) {
+      Dpred_voteprob <- predict(state_glm_forecast[[s]]$mod_D, 
+                               newdata=poll20_pvstate_df[[s]]$avgpoll, se=T, type="response")
+      Dpred_q <- qt(0.975, df = df.residual(state_glm_forecast[[s]]$mod_D)) ## used in pred interval formula
+        
+      Rpred_voteprob <- predict(state_glm_forecast[[s]]$mod_R, 
+                               newdata=poll20_pvstate_df[[s]]$avgpoll, se=T, type="response")
+      Rpred_q <- qt(0.975, df = df.residual(state_glm_forecast[[s]]$mod_R)) ## used in pred interval formula
+
+      state_glm_forecast_outputs <- rbind(
+        state_glm_forecast_outputs,
+        cbind.data.frame(state = s, party = "democrat", x = hypo_avg_poll, 
+                         y = Dpred_voteprob$fit*100, 
+                         ymin = (Dpred_voteprob$fit - Rpred_q*Dpred_voteprob$se.fit)*100,
+                         ymax = (Dpred_voteprob$fit + Rpred_q*Dpred_voteprob$se.fit)*100),
+        cbind.data.frame(state = s, party = "republican", x = hypo_avg_poll, 
+                         y = Rpred_voteprob$fit*100, 
+                         ymin = (Rpred_voteprob$fit - Rpred_q*Rpred_voteprob$se.fit)*100,
+                         ymax = (Rpred_voteprob$fit + Rpred_q*Rpred_voteprob$se.fit)*100)
+      )
+    }
+  }
+}
+
+## graphs: polls in different states / parties different levels 
+##         of strength / significance of outcome
+ggplot(state_glm_forecast_outputs, aes(x=x, y=y, ymin=ymin, ymax=ymax)) + 
+  facet_geo(~ state) +
+  geom_line(aes(color = party)) + 
+  geom_ribbon(aes(fill = party), alpha=0.5, color=NA) +
+  coord_cartesian(ylim=c(0, 100)) +
+  scale_color_manual(values = c("blue", "red")) +
+  scale_fill_manual(values = c("blue", "red")) +
+  xlab("hypothetical poll support") +
+  ylab('probability of state-eligible voter voting for party') +
+  theme_bw() #+
+  #ggsave("../Plots/section5.png")
+
+
+
+my_state_glm_forecast <- list()
+my_state_glm_forecast_outputs <- data.frame()
+for (s in unique(poll_pvstate_df$state)) {
+  
+  my_state_glm_forecast[[s]]$dat_D <- poll_pvstate_df %>% 
+    filter(state == s, party == "democrat")
+  my_state_glm_forecast[[s]]$mod_D <- glm(cbind(D, VEP - D) ~ avg_poll, 
+                                       my_state_glm_forecast[[s]]$dat_D,
+                                       family = binomial(link="logit"))
+
+  my_state_glm_forecast[[s]]$dat_R <- poll_pvstate_df %>% 
+    filter(state == s, party == "republican")  
+  my_state_glm_forecast[[s]]$mod_R <- glm(cbind(R, VEP - R) ~ avg_poll, 
+                                       my_state_glm_forecast[[s]]$dat_R,
+                                       family = binomial(link="logit"))
+  
+  if (nrow(my_state_glm_forecast[[s]]$dat_R) > 2) {
+    for (hypo_avg_poll in seq(from=0, to=100, by=10)) {
+      Dpred_voteprob <- predict(my_state_glm_forecast[[s]]$mod_D, 
+                               newdata=data.frame(avg_poll=hypo_avg_poll), se=T, type="response")
+      Dpred_q <- qt(0.975, df = df.residual(my_state_glm_forecast[[s]]$mod_D)) ## used in pred interval formula
+        
+      Rpred_voteprob <- predict(my_state_glm_forecast[[s]]$mod_R, 
+                               newdata=data.frame(avg_poll=hypo_avg_poll), se=T, type="response")
+      Rpred_q <- qt(0.975, df = df.residual(my_state_glm_forecast[[s]]$mod_R)) ## used in pred interval formula
+
+      my_state_glm_forecast_outputs <- rbind(
+        my_state_glm_forecast_outputs,
+        cbind.data.frame(state = s, party = "democrat", x = hypo_avg_poll, 
+                         y = Dpred_voteprob$fit*100, 
+                         ymin = (Dpred_voteprob$fit - Rpred_q*Dpred_voteprob$se.fit)*100,
+                         ymax = (Dpred_voteprob$fit + Rpred_q*Dpred_voteprob$se.fit)*100),
+        cbind.data.frame(state = s, party = "republican", x = hypo_avg_poll, 
+                         y = Rpred_voteprob$fit*100, 
+                         ymin = (Rpred_voteprob$fit - Rpred_q*Rpred_voteprob$se.fit)*100,
+                         ymax = (Rpred_voteprob$fit + Rpred_q*Rpred_voteprob$se.fit)*100)
+      )
+    }
+  }
+}
+
+my_state_glm_forecast <- list()
+my_state_glm_forecast_outputs <- data.frame()
+for (s in unique(poll_pvstate_df$state)) {
+  vep <- as.integer(vep_df_four$VEP[vep_df_four$state == s & vep_df$year == 2020])
+  my_state_glm_forecast[[s]]$dat_D <- poll_pvstate_df %>% 
+    filter(state == s, party == "democrat")
+  my_state_glm_forecast[[s]]$mod_D <- glm(cbind(D, VEP - D) ~ avg_poll, 
+                                       my_state_glm_forecast[[s]]$dat_D,
+                                       family = binomial(link="logit"))
+
+  my_state_glm_forecast[[s]]$dat_R <- poll_pvstate_df %>% 
+    filter(state == s, party == "republican")  
+  my_state_glm_forecast[[s]]$mod_R <- glm(cbind(R, VEP - R) ~ avg_poll, 
+                                       my_state_glm_forecast[[s]]$dat_R,
+                                       family = binomial(link="logit"))
+  prob_Dvote <- predict(my_state_glm_forecast[[s]]$mod_D,
+                        newdata = poll20avg_df$avg_poll[poll20avg_df$state == s & poll20avg_df$year == 2020 & poll20avg_df$party == "democrat"])
+}
+VEP_PA_2020 <- as.integer(vep_df$VEP[vep_df$state == "Pennsylvania" & vep_df$year == 2016])
+PA_R <- poll_pvstate_df %>% filter(state=="PA", party=="republican")
+PA_D <- poll_pvstate_df %>% filter(state=="PA", party=="democrat")
+PA_R_glm <- glm(cbind(R, VEP-R) ~ avg_poll, PA_R, family = binomial)
+PA_D_glm <- glm(cbind(D, VEP-D) ~ avg_poll, PA_D, family = binomial)
+prob_Rvote_PA_2020 <- predict(PA_R_glm, newdata = data.frame(avg_poll=44.5), type="response")[[1]]
+prob_Dvote_PA_2020 <- predict(PA_D_glm, newdata = data.frame(avg_poll=50), type="response")[[1]]
+sim_Rvotes_PA_2020 <- rbinom(n = 10000, size = VEP_PA_2020, prob = prob_Rvote_PA_2020)
+sim_Dvotes_PA_2020 <- rbinom(n = 10000, size = VEP_PA_2020, prob = prob_Dvote_PA_2020)
+sim_elxns_PA_2020 <- ((sim_Dvotes_PA_2020-sim_Rvotes_PA_2020)/(sim_Dvotes_PA_2020+sim_Rvotes_PA_2020))*100
+
+```
+

@@ -1,5 +1,7 @@
 library(tidyverse)
 election_20 <- as.Date("11/3/20", "%m/%d/%Y")
+avg <- read_csv("./Data/pollavg_1968-2016.csv")
+avg_state <- read_csv("./Data/pollavg_bystate_1968-2016.csv")
 
 # Annual national data
 
@@ -82,7 +84,7 @@ national %>%
 local %>% 
   write_csv("./Data/local_fundamentals.csv")
 
-polls_20 <- read_csv("./Data/polls_2020_real.csv") %>% 
+polls_20 <- read_csv("./Data/polls_2020.csv") %>% 
   mutate(fte_grade_buckets = case_when(fte_grade %in% c("A+", "A", "A-") ~ 0,
                                        fte_grade == "A/B" ~ 1,
                                        fte_grade %in% c("B+, B", "B-") ~ 2,
@@ -112,6 +114,17 @@ model_3_data <- national %>%
               group_by(year, party) %>% 
               summarize(avg_support_2 = mean(avg_support))) %>% 
   write_csv("./Data/model_3.csv")
+
+model_input_local <- local %>% 
+  full_join(avg_state %>% 
+             filter(weeks_left == 10) %>% 
+             group_by(year, state, party) %>% 
+             summarize(avg_support_10 = mean(avg_poll))) %>% 
+  full_join(avg_state %>% 
+              filter(weeks_left < 2) %>% 
+              group_by(year, state, party) %>% 
+              summarize(avg_support_2 = mean(avg_poll))) %>% 
+  write_csv("./Data/model_input_local.csv")
 
 # Trump data
 

@@ -1,0 +1,86 @@
+---
+title: "Section 5"
+author: "Jack Schroeder, Gabe Cederberg, and Alexandra Norris"
+date: "10/6/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+
+pvstate_df <- read_csv("./Data/popvote_bystate_1948-2016.csv")
+vep_df <- read_csv("./Data/vep_1980-2016.csv")
+pollstate_df <- read_csv("./Data/pollavg_bystate_1968-2016.csv")
+
+poll_pvstate_vep_df <- pvstate_df %>%
+  mutate(D_pv = D/total) %>%
+  inner_join(pollstate_df %>% filter(weeks_left == 5)) %>%
+  left_join(vep_df)
+
+ND_D <- poll_pvstate_vep_df %>%
+  filter(state=="North Dakota", party=="democrat")
+
+ND_D_lm <- lm(D_pv ~ avg_poll, ND_D)
+
+ND_D_glm <- glm(cbind(D, VEP-D) ~ avg_poll, ND_D,
+                family = binomial)
+
+## Get relevant data
+VEP_PA_2020 <- as.integer(vep_df$VEP[vep_df$state == "Pennsylvania" & vep_df$year == 2016])
+PA_R <- poll_pvstate_vep_df %>% filter(state=="Pennsylvania", party=="republican")
+PA_D <- poll_pvstate_vep_df %>% filter(state=="Pennsylvania", party=="democrat")
+
+## Fit D and R models
+PA_R_glm <- glm(cbind(R, VEP-R) ~ avg_poll, PA_R, family = binomial)
+PA_D_glm <- glm(cbind(D, VEP-D) ~ avg_poll, PA_D, family = binomial)
+
+## Get predicted draw probabilities for D and R
+prob_Rvote_PA_2020 <- predict(PA_R_glm, newdata = data.frame(avg_poll=44.5), type="response")[[1]]
+prob_Dvote_PA_2020 <- predict(PA_D_glm, newdata = data.frame(avg_poll=50), type="response")[[1]]
+
+## Get predicted distribution of draws from the population
+sim_Rvotes_PA_2020 <- rbinom(n = 100000, size = VEP_PA_2020, prob = prob_Rvote_PA_2020)
+plot(sim_Rvotes_PA_2020)
+sim_Dvotes_PA_2020 <- rbinom(n = 100000, size = VEP_PA_2020, prob = prob_Dvote_PA_2020)
+
+sim_elxns_PA_2020 <- ((sim_Dvotes_PA_2020-sim_Rvotes_PA_2020)/(sim_Dvotes_PA_2020+sim_Rvotes_PA_2020))*100
+
+campaigns <- read_csv("./Data/ad_campaigns_2000-2012.csv")
+creative <- read_csv("./Data/ad_creative_2000-2012.csv")
+
+merged <- full_join(campaigns, creative, by=c("creative", "party", "cycle"))
+
+merged %>% 
+  filter(party == "democrat",
+         !is.na(ad_purpose),
+         ad_purpose != "unclear") %>% 
+  ggplot(aes(x=ad_purpose)) + geom_bar() +
+  facet_wrap(~cycle)
+
+merged %>% 
+  filter(cycle == 2008) %>% 
+  count(ad_issue) %>% 
+  arrange(desc(n))
+
+merged %>% 
+  filter(cycle == 2008,
+         ad_issue == "ecpolicy" | ad_issue == "defpolicy") %>% 
+  ggplot(aes(y=total_cost, x=ad_issue)) +
+  geom_col(aes(color = party)) + facet_wrap(~party) +
+  scale_color_manual(values = c("blue", "red")) +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  xlab("Ad Issue") +
+  ylab ("Total Cost") +
+  ggtitle("Ad Spending by Issue and Party in 2008")
+
+merged %>% 
+  filter(cycle == 2000 & party=="republican" | cycle == 2008 & party=="democrat") %>% 
+  ggplot(aes(y=total_cost, x=air_date)) +
+  geom_line() +
+  facet_wrap(~cycle) +
+  ylim(0,500000)
+
+```
+
