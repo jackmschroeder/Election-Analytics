@@ -2,7 +2,7 @@
 
 ### A Primer
 
-This week, I examine advertising, use my national model data to predict state outcomes, and realize why combining those first two elements isn't a great idea. There was a lot of under the hood work this week, which I hope to extend in coming weeks as I transfer my linear models into probablistic ones.
+This week, I examine advertising, use my national model data to predict state outcomes, and realize why combining those first two elements isn't a great idea. There was a lot of under the hood work this week, which I hope to extend in coming weeks as I transfer my linear models into probabilistic ones.
 
 For this post, I sought to answer the following questions:
 
@@ -26,7 +26,7 @@ A few takeaways here:
 
 (1) In teams of reach, **both parties appear to be placing ads in odd areas**. Trump is making a push toward traditionally blue states (Washington and New York come to mind), and Biden seems to have sprinkled a few ads around red states (ex. Louisiana and North Dakota).
 
-(2) Overall, though, **non-competitive states have barely any ads**. Keep in mind that the y-axis is logged, so the differences only increase as the bars get larger. I had to do this so non-competitive states would show in the first place, and it is no surprise that swing states like Arizona and Florida have bars nearly reacing the top, while other states like Maryland and Idaho are struggling to reach 1,000 ads. It could be that outside groups only spend on ads in safe states when the election is very close (as a mobilizing tactic), but it could also be equally true that those groups only target competitive states. Either way, it would be very interesting to update this with data post-election.
+(2) Overall, though, **non-competitive states have barely any ads**. Keep in mind that the y-axis is logged, so the differences only increase as the bars get larger. I had to do this so non-competitive states would show in the first place, and it is no surprise that swing states like Arizona and Florida have bars nearly reaching the top, while other states like Maryland and Idaho are struggling to reach 1,000 ads. It could be that outside groups only spend on ads in safe states when the election is very close (as a mobilizing tactic), but it could also be equally true that those groups only target competitive states. Either way, it would be very interesting to update this with data post-election.
 
 (3) No ads yet in New Jersey. **Sad!**
 
@@ -60,7 +60,7 @@ These three things aside, I was still very optimistic going into predicting 2020
 
 ### 2020 Predictions - Pennsylvania
 
-I decided to choose the state we focused on in section (Pennsylavnia) as a test for this week's models. Pennsylvania looks to be a swing state this cycle after going for Trump in 2016. I was interested to see what my models predicted for this year.
+I decided to choose the state we focused on in section (Pennsylvania) as a test for this week's models. Pennsylvania looks to be a swing state this cycle after going for Trump in 2016. I was interested to see what my models predicted for this year.
 
 I ran into a few problems gathering reliable 2020 data, the foremost being that the advertising data did not give costs per candidate. To approximate these, I took the share of total ads from each candidate and multiplied it to the total cost of ads in that state. I think this should be a good measure (I don't see either candidate consistently spending less than the other in a certain state), but it could be improved with better data.
 
