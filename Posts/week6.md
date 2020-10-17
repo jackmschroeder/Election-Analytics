@@ -58,4 +58,20 @@ Overall, there don't seem to be any region-specific effects in certain elections
 
 ### Impact on 2020
 
-Turnout looks to be very unpredictable in 2020. Fivethirtyeight and The Economist models.
+These trends are a good baseline for any 2020 prediction, but this will be a drastically different election due to the pandemic. Many states are increasing their reliance on vote-by-mail and discouraging in-person voting. This will dramatically change the structure of Election Day, with the potential for results to be unknown until the end of the week (or longer).
+
+There are two major models to watch this cycle: FiveThirtyEight and The Economist. In general, FiveThirtyEight deemphasizes fundamentals in favor of accuracy-adjusted polling metrics. The Economist, on the other hand, leans more into "fundamentals," but adjusts accordingly for the massive swings in economic indicators during the pandemic. Where FiveThirtyEight's model can at times be a black box, The Economist's model is mostly open-source.
+
+Turnout in both models appears to be sampled from a prior distribution based on past turnout and other variables. FiveThirtyEight has gone a step further than The Economist in pandemic-specific turnout by widening thse distributions, increasing uncertainty and error. They also claim to have gone a step further by accounting for ease of voting. The Economist may have had a relatively wide distribution of potential turnouts when constructing their models, but they are upfront (as of early June) about not incorporating the pandemic's impact on turnout into their forecast.
+
+Which one of these methods will work the most accurately? For turnout alone, I'd go with FiveThirtyEight, if only because they are adjusting their forecast to try and capture the pandemic's impact. As the US Elections Project notes, voters have already cast 18.8% of the total votes from the 2016 election (over 26 million ballots!), which points to potentially even higher turnout than Trump v. Clinton. However, it's important not to read too much into this number - there's no hard evidence that these votes are coming from new voters. Another caveat is that even if FiveThirtyEight's model more accurately predicts turnout than The Economist, the latter still has a chance to better forecast the overall results. One final note is that the Economist may have updated their model to include turnout adjustments, but it isn't noted on the model's homepage or earlier articles.
+
+### References
+
+*The Economist*. (2020). "Forecasting the US elections." Updated October 17, 2020. Accessed online.
+
+Enos, R. and Fowler, A. (2016). "Aggregate effects of large-scale campaigns on voter turnout." *Political Science Research and Methods* 6(4). October 2016. Accessed online.
+
+McDonald, M. (2020). "2020 general election early vote statistics." *United States Elections Project*. Updated October 17, 2020. Accessed online.
+
+Silver, N. (2020, August 12). "How FiveThirtyEight’s 2020 presidential forecast works — And what’s different because of COVID-19." *FiveThirtyEight*. Accessed online.
