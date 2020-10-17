@@ -13,9 +13,57 @@ library(geofacet)
 
 turnout <- read_csv("../Data/turnout_1980-2016.csv") %>% 
   mutate(turnout_pct = turnout/VEP,
-         Election = ifelse(year%%4, "Midterm", "Presidential"))
-
-#turnout$state <- state.name[match(turnout$state, state.name)]
+         Election = ifelse(year%%4, "Midterm", "Presidential"),
+         Region = case_when(state %in% c("Maine",
+                                      "New Hampshire",
+                                      "Vermont",
+                                      "Massachusetts",
+                                      "Connecticut",
+                                      "Rhode Island",
+                                      "New York",
+                                      "New Jersey",
+                                      "Pennsylvania") ~ "Northeast",
+                            state %in% c("Delaware",
+                                      "Maryland",
+                                      "West Virginia",
+                                      "Virginia",
+                                      "Kentucky",
+                                      "North Carolina",
+                                      "South Carolina",
+                                      "Tennessee",
+                                      "Georgia",
+                                      "Florida",
+                                      "Alabama",
+                                      "Mississippi",
+                                      "Louisiana",
+                                      "Arkansas",
+                                      "Oklahoma",
+                                      "Texas") ~ "South",
+                            state %in% c("Ohio",
+                                      "Michigan",
+                                      "Indiana",
+                                      "Illinois",
+                                      "Wisconsin",
+                                      "Minnesota",
+                                      "Iowa",
+                                      "Missouri",
+                                      "Kansas",
+                                      "Nebraska",
+                                      "South Dakota",
+                                      "North Dakota") ~ "Midwest",
+                            state %in% c("Montana",
+                                      "Wyoming",
+                                      "Colorado",
+                                      "New Mexico",
+                                      "Arizona",
+                                      "Utah",
+                                      "Idaho",
+                                      "Nevada",
+                                      "Washington",
+                                      "Oregon",
+                                      "California",
+                                      "Alaska",
+                                      "Hawaii") ~ "West"))
 
 us_trends <- turnout %>% 
   filter(state == "United States")
@@ -64,6 +112,24 @@ turnout %>%
   ggsave("../Plots/week6plot2.png",
          width = 15,
          height = 7)
+
+turnout %>% 
+  filter(!is.na(Region),
+         Election == "Presidential") %>% 
+  group_by(Region, year) %>% 
+  summarize(turnout_pct = sum(turnout)/sum(VEP)) %>% 
+  ggplot(aes(x=year, y=turnout_pct, color=Region)) +
+  geom_line() +
+  theme_bw() +
+  scale_x_continuous(breaks = seq(from = 1980, by = 4, to = 2016)) +
+  scale_y_continuous(labels = scales::percent) +
+  xlab("Year") +
+  ylab("% Turnout") +
+  geom_line(data=us_pres, size=1.5, color="black") +
+  labs(title = "Turnout Bounces Between Presidential and Midterm Elections",
+       subtitle = "Presidential Turnout Normally Between 50-60%", 
+       caption = "Black line is national presidential turnout.") +
+  ggsave("../Plots/week6plot3.png")
 
 
 ```
