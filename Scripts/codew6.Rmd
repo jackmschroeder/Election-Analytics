@@ -120,16 +120,44 @@ turnout %>%
   summarize(turnout_pct = sum(turnout)/sum(VEP)) %>% 
   ggplot(aes(x=year, y=turnout_pct, color=Region)) +
   geom_line() +
+  scale_y_continuous(labels = scales::percent) +
   theme_bw() +
   scale_x_continuous(breaks = seq(from = 1980, by = 4, to = 2016)) +
-  scale_y_continuous(labels = scales::percent) +
   xlab("Year") +
   ylab("% Turnout") +
   geom_line(data=us_pres, size=1.5, color="black") +
-  labs(title = "Turnout Bounces Between Presidential and Midterm Elections",
-       subtitle = "Presidential Turnout Normally Between 50-60%", 
+  labs(title = "Regional Turnout Trends in Presidential Elections",
+       subtitle = "South Lags Behind Rest of Country", 
        caption = "Black line is national presidential turnout.") +
   ggsave("../Plots/week6plot3.png")
+
+
+turnout2 <- turnout %>% 
+  mutate(year = year + 4) %>% 
+  filter(year<2019) %>% 
+  select(year, state, turnout_pct) %>% 
+  rename(turnout_lag = turnout_pct)
+
+turnout_trends <- turnout %>% 
+  left_join(turnout2, by=c("year", "state"))
+
+turnout_trends %>% 
+  filter(!is.na(Region),
+         !is.na(turnout_lag),
+         Election == "Presidential") %>% 
+  group_by(Region, year) %>% 
+  summarize(turnout_diff = mean(turnout_pct - turnout_lag)) %>% 
+  ggplot(aes(x=year, y=turnout_diff, color=Region)) +
+  geom_line() +
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  scale_x_continuous(breaks = seq(from = 1980, by = 4, to = 2016)) +
+  xlab("Year") +
+  ylab("\u0394 Turnout") +
+  geom_abline(intercept=0, slope=0, alpha=0.5) +
+  labs(title = "Turnout Changes by Region",
+       subtitle = "No Significant Regional Boosts") +
+  ggsave("../Plots/week6plot4.png")
 
 
 ```
