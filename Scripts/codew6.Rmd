@@ -7,5 +7,64 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(geofacet)
+
+turnout <- read_csv("../Data/turnout_1980-2016.csv") %>% 
+  mutate(turnout_pct = turnout/VEP,
+         Election = ifelse(year%%4, "Midterm", "Presidential"))
+
+#turnout$state <- state.name[match(turnout$state, state.name)]
+
+us_trends <- turnout %>% 
+  filter(state == "United States")
+
+us_pres <- us_trends %>% 
+  filter(Election == "Presidential")
+
+pres <- turnout %>% 
+  filter(Election == "Presidential")
+
+mid <- turnout %>% 
+  filter(Election != "Presidential")
+
+turnout %>% 
+  filter(state != "United States") %>% 
+  ggplot(aes(x=year, y=turnout_pct, group=state)) +
+  geom_point(aes(alpha=0.01), color="grey") +
+  geom_line(data=us_trends, color="salmon", size=1.5) +
+  geom_line(data=us_pres, size=1.5, color="grey") +
+  geom_point(data=us_trends, color="dodgerblue", size=2.5) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_x_continuous(breaks = seq(from = 1980, by = 4, to = 2016)) +
+  scale_y_continuous(labels = scales::percent) +
+  xlab("Year") +
+  ylab("% Turnout") +
+  labs(title = "Turnout Bounces Between Presidential and Midterm Elections",
+       subtitle = "Presidential Turnout Normally Between 50-60%", 
+       caption = "Blue dots and red trendline are national turnout.\nGrey dots are state-level turnout.\nGrey line is national presidential turnout.") +
+  ggsave("../Plots/week6plot1.png")
+
+turnout %>% 
+  filter(state != "United States") %>% 
+  ggplot(aes(x=year, y=turnout_pct, color=Election)) +
+  geom_line() +
+  facet_geo(~state) +
+  geom_abline(intercept = 0.5, slope = 0, alpha=0.5) +
+  scale_y_continuous(breaks = seq(by = 0.5, from = 0, to = 1), labels = scales::percent) +
+  scale_x_continuous(breaks = c(1980, 2000, 2016), labels = c("'80", "'00", "'16")) +
+  theme_bw() +
+  labs(title = "Turnout by State and Election",
+       subtitle = "Northern Turnout Consistently Higher than in South",
+       x = "Year",
+       y = "% Turnout",
+       caption = "Grey benchmark at 50% turnout.") +
+  ggsave("../Plots/week6plot2.png",
+         width = 15,
+         height = 7)
+
+
 ```
 
