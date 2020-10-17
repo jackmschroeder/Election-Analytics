@@ -13,3 +13,5 @@ Hello! I am a senior at Harvard studying Government and Data Science, with a sec
 ## [Week 4: Incumbency and Time-for-Change (10.3.20)](Posts/week4.md)
 
 ## [Week 5: The Air War (10.10.20)](Posts/week5.md)
+
+## [Week 6: The Ground Game (10.17.20)](Posts/week6.md)

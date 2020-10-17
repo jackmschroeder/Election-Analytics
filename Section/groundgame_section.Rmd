@@ -1,0 +1,101 @@
+---
+title: "Untitled"
+author: "Jack Schroeder, Gabe Cederberg, and Alexandra Norris"
+date: "10/13/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(geofacet)
+library(ggrepel)
+
+fo <- read_csv("../Data/fieldoffice_2012-2016_byaddress.csv")
+popvote_bystate_1948_2016 <- read_csv("../Data/popvote_bystate_1948-2016.csv")
+
+fo$state <- state.name[match(fo$state, state.abb)]
+
+fo16 <- fo %>% 
+  filter(year == 2016) %>% 
+  group_by(candidate) %>% 
+  count()
+
+fo12 <- fo %>% 
+  filter(year == 2012) %>% 
+  group_by(candidate) %>% 
+  count()
+
+fo16s <- fo %>% 
+  filter(year == 2016) %>% 
+  group_by(candidate) %>% 
+  count(state)
+
+fo16w <- fo %>% 
+  filter(year == 2016,
+         state == "Wisconsin") %>% 
+  group_by(candidate) %>% 
+  count()
+
+fo12w <- fo %>% 
+  filter(year == 2012,
+         state == "Wisconsin") %>% 
+  group_by(candidate) %>% 
+  count()
+
+rbind(fo16, fo12) %>% 
+  ggplot(aes(y=n, x=candidate)) +
+  geom_col() +
+  theme_classic() +
+  xlab("Candidate") +
+  ylab("Number of Field Offices") +
+  ggtitle("Clinton Out Office-d Trump")
+
+left_join(fo, popvote_bystate_1948_2016, by = c("year", "state")) %>% 
+  filter(year == 2016) %>% 
+  mutate(win = case_when(D_pv2p > 50 ~ 1,
+                         TRUE ~ 0)) %>% 
+  group_by(candidate) %>% 
+  count(state, win) %>% 
+  ggplot(aes(x=candidate, y=n, color=win)) +
+  geom_point() +
+  theme_classic() +
+  xlab("Candidate") +
+  ylab("Number of Field Offices") +
+  ggtitle("Clinton Gambled... And Lost")
+
+rbind(fo16w, fo12w) %>% 
+  ggplot(aes(y=n, x=candidate)) +
+  geom_col() +
+  theme_classic() +
+  xlab("Candidate") +
+  ylab("Number of Field Offices") +
+  ggtitle("Obama More Field Offices than Clinton")
+
+# Code to map addresses?
+
+
+rom <- read_csv("../Data/RomneyGroundGame2012.csv")
+
+summary(rom)
+
+rom %>% 
+  filter(state != "Nationwide") %>% 
+  ggplot(aes(x=contacts)) +
+  geom_density()
+
+summary(lm(Mail ~ field.offices, rom))
+
+ggplot(rom, aes(x=field.offices, y=Phone)) +
+  geom_point() +
+  facet_geo(~state)
+
+rom %>% 
+  filter(state!="Nationwide") %>% 
+  ggplot(aes(x=field.offices, y=contacts)) +
+  geom_point() +
+  geom_label_repel(aes(label=state))
+
+```
+
