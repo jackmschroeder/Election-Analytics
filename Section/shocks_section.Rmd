@@ -1,0 +1,38 @@
+---
+title: "Untitled"
+author: "Jack Schroeder, Gabe Cederberg, and Alexandra Norris"
+date: "10/20/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggrepel)
+
+covid <- read_csv("../Data/United_States_COVID-19_Cases_and_Deaths_by_State_over_Time.csv")
+
+covid %>% 
+  filter(tot_cases > 0)
+
+covid_county <- read_csv("../Data/Provisional_COVID-19_Death_Counts_in_the_United_States_by_County.csv")
+
+covid_county %>% 
+  group_by(State) %>% 
+  summarize(covid = sum(`Deaths involving COVID-19`),
+            all = sum(`Deaths from All Causes`)) %>% 
+  mutate(tristate = case_when(State %in% c("CT", "NJ", "NY") ~ 1,
+                              TRUE ~ 0)) %>% 
+  ggplot(aes(x=covid, y=all, color = tristate)) +
+  geom_point(alpha=0.95) + 
+  geom_smooth(method = "lm", se=F, color="salmon") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  labs(title = "Covid Deaths by State",
+       subtitle = "Tri-State Area Saw Disproportionate # of Deaths",
+       x = "Covid Deaths",
+       y = "All Deaths",
+       caption = "NJ, NY, and CT are blue.\nData from CDC.")
+```
+
