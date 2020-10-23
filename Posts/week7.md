@@ -34,16 +34,36 @@ What's the takeaway? Even in the early stages of the pandemnic, we had already p
 
 ### Electoral Impact
 
+I decided to look at how prominent Covid metrics - deaths and tests - potentially factor into Trump's polling going into the election. This was inspired by Vavreck and Warsahw (2020)'s analysis into how county Covid deaths impacts Trump's approval rating. Although I could have used Covid metrics by county, since I can't subset my polling averages on the county level, I gathered data by state.
+
+I redownloaded FiveThirtyEight's database of polls and sorted them into buckets based on months to the election (one bucket of polls from October 3 onward, one of polls from September 3-October 2, one of polls pre-September 3). I then got state-level data from *The COVID Tracking Project*. I calculated each major metric (deaths and tests) for per-capita totals and per-capita increases by month from the election. I lagged the monthly increases to let me see the effect of the previous month's Covid data on Trump's approval.
+
+I regressed Trump's monthly polling average in four separate models: (1) on total per-capita deaths, (2) on the per-capita monthly increase in deaths, (3) on total per-capita tests, and (4) on the per-capita monthly increase in tests. All of these variables are statewide, and I summarized the results in the table below:
+
 ![Covid and Trump (Simple)](../Plots/week7table1.png)
 
+There are two takeaways:
+
+(1) Every indicator except for the monthly increase in tests is significantly and negatively correlated with support for Trump. This is a good sign and in the expected direction (it would be weird if more deaths was associated with higher Trump support).
+
+(2) Worringly, though, the adjusted r-squareds are low (model 1 has the highest at 0.11) and the standard errors are high (model 3's is 10.4 points in the polling average).
+
+Since these models are very simple, I decided to see if my concerns were valid by including 2016 Trump vote share as a control in each of the models. I ran this lagged vote share variable by itself to predict Trump's polling average, then applied lagged vote share to all four of the models:
+
 ![Covid and Trump (Controlled)](../Plots/week7table2.png)
+
+A few conclusions:
+
+(1) Trump's 2016 vote share explains an insane amount of the variance in his monthly polling averages. The adjusted r-squared is 0.95, which is light years ahead of the values for the earlier models.
+
+(2) After including lagged vote share, none of the Covid variables are significant. To put it differently, no Covid indicator seems to impact Trump's polling averages independently from Trump's statewide totals from 2016.
+
+Does this give me reason to doubt Vavreck and Warshaw (2020)? I don't think so. Instead of working with polling averages, they in-housed the polling. They also work on the county-level and generate a rolling average of Covid deaths per capita for each respondent. The monthly figures in my model are static and do not update based on the date of each poll (since I'm working with the monthly polling average). If I re-ran my analysis by creating rolling indices of monthly support and Covid metrics, I would expect to see similar results to their work, although I would not be able to isolate anything on the county level.
 
 ### References
 
 Allcott, H., et al. (2020). "Polarization and public health: Partisan differences in social distancing during the coronavirus pandemic." *Journal of Public Economics* 191. November 2020. Accessed online.
 
-*The Economist*. (2020). "Forecasting the US elections." Updated October 17, 2020. Accessed online.
+*The Atlantic*. (2020). "The COVID Tracking Project." Updated October 23, 2020. Accessed online.
 
-McDonald, M. (2020). "2020 general election early vote statistics." *United States Elections Project*. Updated October 17, 2020. Accessed online.
-
-Silver, N. (2020, August 12). "How FiveThirtyEight’s 2020 presidential forecast works — And what’s different because of COVID-19." *FiveThirtyEight*. Accessed online.
+Vavreck, L. and Warshaw, C. (2020, September 18). "How local Covid deaths are affecting vote choice." *The New York Times.* Accessed online.
