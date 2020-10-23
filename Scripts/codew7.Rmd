@@ -2,12 +2,140 @@
 title: "Untitled"
 author: "Jack Schroeder"
 date: "10/23/2020"
-output: html_document
+output:
+  pdf_document: default
+  classoption: landscape
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
+library(stargazer)
+
+election_20 <- as.Date("11/3/20", "%m/%d/%Y")
+covid_election <- as.Date("2020-11-03")
+
+covid <- read_csv("../Data/covid_state.csv") %>% 
+  filter(date == "2020-10-20") %>% 
+  group_by(state) %>% 
+  summarize(death = max(death),
+            totalTestResults = max(totalTestResults))
+
+covid$state <- state.name[match(covid$state, state.abb)]
+
+covid$state[9] <- "District of Columbia"
+
+covid_clear <- read_csv("../Data/covid_state.csv") %>% 
+  mutate(weeks_left = round(difftime(covid_election, date, unit="weeks")),
+         months_left = case_when(weeks_left %in% c(1, 2, 3, 4) ~ 0,
+                                 weeks_left %in% c(5, 6, 7, 8) ~ 1,
+                                 weeks_left %in% c(9, 10, 11, 12) ~ 2,
+                                 TRUE ~ 3),
+         months_left = months_left-1) %>% 
+  group_by(months_left, state) %>% 
+  summarize(death_increase = sum(deathIncrease),
+            tests_increase = sum(totalTestResultsIncrease))
+
+covid_clear$state <- state.name[match(covid_clear$state, state.abb)]
+
+covid_clear$state[9] <- "District of Columbia"
+
+summary(lm(totalTestResults ~ death, data=covid))
+
+
+
+polls <- read_csv("../Data/president_polls.csv") %>% 
+  filter(candidate_party %in% c("DEM", "REP")) %>% 
+  mutate(fte_grade_buckets = case_when(fte_grade %in% c("A+", "A", "A-") ~ 0,
+                                       fte_grade == "A/B" ~ 1,
+                                       fte_grade %in% c("B+, B", "B-") ~ 2,
+                                       fte_grade == "B/C" ~ 3,
+                                       fte_grade %in% c("C+", "C", "C-") ~ 4,
+                                       fte_grade == "C/D" ~ 5,
+                                       fte_grade == "D-" ~ 6,
+                                       TRUE ~ 7),
+         fte_grade_good = case_when(fte_grade_buckets < 2 ~ 0,
+                                    fte_grade_buckets > 3 ~ 2,
+                                    TRUE ~ 1),
+         poll_date = as.Date(end_date, "%m/%d/%Y"),
+         weeks_left = round(difftime(election_20, poll_date, unit="weeks")),
+         months_left = case_when(weeks_left %in% c(1, 2, 3, 4) ~ 0,
+                                 weeks_left %in% c(5, 6, 7, 8) ~ 1,
+                                 TRUE ~ 2)) %>% 
+  filter(state != c("Maine CD-1", "Maine CD-2", "Nebraska CD-1", "Nebraska CD-2", "Nebraska CD-3"))
+
+polls$state[is.na(polls$state)] <- "National"
+
+locality <- read_csv("../Data/model_input_local.csv") %>% 
+  filter(year == 2016) %>% 
+  mutate(lag_vote = case_when(party == "democrat" ~ D_pv2p,
+                              TRUE ~ R_pv2p),
+         candidate_party = case_when(party == "democrat" ~ "DEM",
+                                     TRUE ~ "REP")) %>%
+  select(state, candidate_party, lag_vote)
+
+pop <- read_csv("../Data/demographic_1990-2018.csv") %>% 
+  filter(year == 2018) %>% 
+  select(state, total)
+
+pop$state <- state.name[match(pop$state, state.abb)]
+
+pop$state[8] <- "District of Columbia"
+
+joined <- polls %>% 
+  group_by(months_left, candidate_party, state) %>% 
+  summarize(support = mean(pct),
+            n = n()) %>% 
+  left_join(., covid, by = "state") %>% 
+  left_join(., locality, by = c("state", "candidate_party")) %>%
+  left_join(., pop, by = "state") %>% 
+  left_join(., covid_clear, by = c("state", "months_left")) %>% 
+  mutate(death_per = death/total,
+         tests_per = totalTestResults/total,
+         death_increase = death_increase/total,
+         tests_increase = tests_increase/total) %>% 
+  filter(candidate_party == "REP")
+
+mbase <- lm(support ~ lag_vote, joined)
+mdeath_per_base <- lm(support ~ death_per, joined)
+mtests_per_base <- lm(support ~ tests_per, joined)
+mdeath_per_base <- lm(support ~ death_per, joined)
+mtests_per_base <- lm(support ~ tests_per, joined)
+mdeath_inc_base <- lm(support ~ death_increase, joined)
+mtests_inc_base <- lm(support ~ tests_increase, joined)
+mdeath <- lm(support ~ death + lag_vote, joined)
+mtests <- lm(support ~ totalTestResults + lag_vote, joined)
+mdeath_per <- lm(support ~ lag_vote + death_per, joined)
+mtests_per <- lm(support ~ lag_vote + tests_per, joined)
+mdeath_inc <- lm(support ~ lag_vote + death_increase, joined)
+mtests_inc <- lm(support ~ lag_vote + tests_increase, joined)
+
+# No impact, rsquared goes down
+# Run individually
+```
+
+```{r, echo=FALSE, results='asis'}
+stargazer(mdeath_per_base, mdeath_inc_base, mtests_per_base, mtests_inc_base, 
+          title = "Covid-19 Deaths/Tests and Trump Support",
+          header = FALSE,
+          covariate.labels = c("Total Covid-19 Deaths", "Monthly Deaths Increase", "Total Covid-19 Tests", "Monthly Tests Increase"),
+          dep.var.labels = "Trump Polling Average",
+          omit.stat = c("f", "rsq"),
+          notes.align = "l",
+          notes = "All variables are statewide. Covid variables are per-capita.",
+          digits = 2,
+          column.sep.width = "1pt")
+
+stargazer(mbase, mdeath_per, mdeath_inc, mtests_per, mtests_inc, 
+          title = "Covid-19 Deaths/Tests and Trump Support",
+          header = FALSE,
+          covariate.labels = c("2016 Trump Vote Share", "Total Covid-19 Deaths", "Monthly Deaths Increase", "Total Covid-19 Tests", "Monthly Tests Increase"),
+          dep.var.labels = "Trump Polling Average",
+          omit.stat = c("f", "rsq"),
+          notes.align = "l",
+          notes = "All variables are statewide. Covid variables are per-capita.",
+          digits = 2,
+          column.sep.width = "1pt")
 ```
 

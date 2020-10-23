@@ -34,7 +34,9 @@ What's the takeaway? Even in the early stages of the pandemnic, we had already p
 
 ### Electoral Impact
 
+![Covid and Trump (Simple)](../Plots/week7table1.png)
 
+![Covid and Trump (Controlled)](../Plots/week7table2.png)
 
 ### References
 
