@@ -1,0 +1,253 @@
+---
+title: "Final Model"
+author: "Jack Schroeder"
+date: "10/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggplot2)
+library(geofacet)
+library(lubridate)
+
+# Results by state
+
+results <- read_csv("../Data/popvote_bystate_1948-2016.csv")
+
+# Take COVI and use it for turnout draw?
+
+vep <- read_csv("../Data/vep_1980-2016.csv") %>% 
+  rbind(., read_csv("../Data/vep_2020.csv")) %>% 
+  mutate(state = case_when(state == "United States" ~ "National",
+                           TRUE ~ state))
+
+# Abandon prediction market - too much data to get, probably VERY correlated w/538 averages
+
+# Instead I'll go with polling averages from 538. Should be workable.
+
+polls_20 <- read_csv("../Data/presidential_poll_averages_2020.csv") %>% 
+  mutate(modeldate = as.Date(modeldate, "%m/%d/%Y"),
+         election_date = as.Date("11/03/20", "%m/%d/%y"),
+         days_to = difftime(election_date, modeldate, unit="days"),
+         party = case_when(candidate_name == "Joseph R. Biden Jr." ~ "democrat",
+                           candidate_name == "Donald Trump" ~ "republican",
+                           TRUE ~ "Delete")) %>% 
+  filter(party != "Delete")
+
+names <- read_csv("../Data/pollavg_1968-2016.csv") %>% 
+  select(year, party, candidate_name)
+
+names <- distinct(names)
+
+incumbent_d <- read_csv("../Data/popvote_1948-2016.csv") %>% 
+  select(-c(candidate, pv)) %>% 
+  filter(party == "democrat") %>% 
+  mutate(my_us_pv2p_lag = lag(pv2p, order_by = year))
+
+incumbent <- read_csv("../Data/popvote_1948-2016.csv") %>% 
+  select(-c(candidate, pv)) %>% 
+  filter(party == "republican") %>% 
+  mutate(my_us_pv2p_lag = lag(pv2p, order_by = year)) %>% 
+  rbind(., incumbent_d)
+
+
+
+# Economic data by state - made this earlier, sticking with it w/o total cost/polls
+
+econ <- read_csv("../Data/model_input_local.csv") %>% 
+  select(-c(avg_support_10, avg_support_2, total_cost, D, R, total, pv, pv2p, incumbent, incumbent_party, prev_admin, term.x, term.y, winner, swing_r, swing_d, margin_pct_nat, margin_pct_lag_nat, swing_nat, pv2p_lag, R_pv2p, D_pv2p))
+
+# Ad data - commenting out given how bad they were 
+
+# ads <- read_csv("../Data/ad_campaigns_2000-2012.csv") %>% 
+#   filter(after_primary > 0) %>% 
+#   group_by(cycle, state, party) %>% 
+#   summarize(ad_spend = sum(total_cost))
+# 
+# ads
+
+# Approval
+
+app <- read_csv("../Data/approval_gallup_1941-2020.csv") %>% 
+  mutate(poll_enddate = as.Date(poll_enddate, "%m/%d/%Y"),
+         poll_startdate = as.Date(poll_startdate, "%m/%d/%Y"),
+         year = year(poll_enddate),
+         month = month(poll_enddate),
+         startmonth = month(poll_startdate),
+         day = day(poll_enddate)) %>% 
+  filter(year %% 4 == 0,
+         month < 11) %>% 
+  group_by(year) %>% 
+  summarize(pres_app = mean(approve))
+
+# EC
+
+elec <- read_csv("../Data/electoralcollegevotes_1948-2020.csv")%>% 
+  rename(state = X1) %>% 
+  select(-c(X22, X23, X24, X25, X26, X27, X28)) %>% 
+  filter(!is.na(state))
+
+polls_2 <- read_csv("../Data/pres_pollaverages_1968-2016.csv") %>% 
+  select(cycle, state, modeldate, candidate_name, pct_estimate, pct_trend_adjusted, election_date) %>% 
+  rename(year = cycle) %>% 
+  mutate(modeldate = as.Date(modeldate, "%m/%d/%Y"),
+         election_date = as.Date(election_date, "%m/%d/%Y"),
+         days_to = difftime(election_date, modeldate, unit="days")) %>% 
+  filter(days_to < 14) %>% 
+  group_by(year, state, candidate_name) %>% 
+  summarize(avg_support_2 = mean(pct_estimate),
+            avg_support_adjusted_2 = mean(pct_trend_adjusted))
+
+polls_10 <- read_csv("../Data/pres_pollaverages_1968-2016.csv") %>% 
+  select(cycle, state, modeldate, candidate_name, pct_estimate, pct_trend_adjusted, election_date) %>% 
+  rename(year = cycle) %>% 
+  mutate(modeldate = as.Date(modeldate, "%m/%d/%Y"),
+         election_date = as.Date(election_date, "%m/%d/%Y"),
+         days_to = difftime(election_date, modeldate, unit="days")) %>% 
+  filter(days_to < 71 & days_to > 14) %>% 
+  group_by(year, state, candidate_name) %>% 
+  summarize(avg_support_10 = mean(pct_estimate),
+            avg_support_adjusted_10 = mean(pct_trend_adjusted))
+
+consolidated <- left_join(polls_2, polls_10, by = c("year", "state", "candidate_name")) %>% 
+  left_join(., names, by = c("year", "candidate_name")) %>% 
+  left_join(., incumbent, by = c("year", "party")) %>% 
+  left_join(., results, by = c("year", "state")) %>% 
+  left_join(., app, by = c("year")) %>% 
+  left_join(., econ, by = c("year", "state", "party")) %>% 
+  left_join(., vep, by = c("year", "state")) %>% 
+  mutate(my_pv2p = case_when(party == "republican" ~ R_pv2p,
+                             party == "democrat" ~ D_pv2p),
+         my_pv2p_lag = case_when(party == "republican" ~ R_pv2p_lag,
+                                 party == "democrat" ~ D_pv2p_lag))
+
+model1 <- lm(my_pv2p ~ avg_support_2 + avg_support_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a, consolidated)
+
+# This must be the place
+
+model2 <- lm(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + RDI_growth_a + my_us_pv2p_lag, consolidated)
+
+AICtab(model1, model2)
+
+summary(model2)
+
+step(model)
+
+```
+
+```{r class forecast}
+
+#####------------------------------------------------------#
+##### Read and merge data ####
+#####------------------------------------------------------#
+
+pvstate_df    <- read_csv("~/R/Election-Analytics/Data/popvote_bystate_1948-2016.csv")
+economy_df    <- read_csv("~/R/Election-Analytics/Data/econ.csv")
+pollstate_df  <- read_csv("~/R/Election-Analytics/Data/pollavg_bystate_1968-2016.csv")
+
+poll_pvstate_df <- pvstate_df %>%
+  inner_join(
+    pollstate_df %>% 
+      filter(weeks_left == 10)
+      # group_by(state, year) %>%
+      # top_n(1, poll_date)
+  )
+poll_pvstate_df$D_pv <- (poll_pvstate_df$D / poll_pvstate_df$total)*100
+poll_pvstate_df$R_pv <- (poll_pvstate_df$R / poll_pvstate_df$total)*100
+poll_pvstate_df$state <- state.abb[match(poll_pvstate_df$state, state.name)]
+
+vep_df <- read_csv("~/R/Election-Analytics/Data/vep_1980-2016.csv")
+poll_pvstate_vep_df <- pvstate_df %>%
+    mutate(D_pv = D/total) %>%
+    inner_join(pollstate_df %>% filter(weeks_left == 5)) %>%
+    left_join(vep_df)
+
+state_glm_forecast <- list()
+state_glm_forecast_outputs <- data.frame()
+poll_pvstate_vep_df$state_abb <- state.abb[match(poll_pvstate_vep_df$state, state.name)]
+for (s in unique(poll_pvstate_vep_df$state_abb)) {
+  
+  state_glm_forecast[[s]]$dat_D <- poll_pvstate_vep_df %>% 
+    filter(state_abb == s, party == "democrat")
+  state_glm_forecast[[s]]$mod_D <- glm(cbind(D, VEP - D) ~ avg_poll, 
+                                       state_glm_forecast[[s]]$dat_D,
+                                       family = binomial(link="logit"))
+
+  state_glm_forecast[[s]]$dat_R <- poll_pvstate_vep_df %>% 
+    filter(state_abb == s, party == "republican")  
+  state_glm_forecast[[s]]$mod_R <- glm(cbind(R, VEP - R) ~ avg_poll, 
+                                       state_glm_forecast[[s]]$dat_R,
+                                       family = binomial(link="logit"))
+  
+  if (nrow(state_glm_forecast[[s]]$dat_R) > 2) {
+    for (hypo_avg_poll in seq(from=0, to=100, by=10)) {
+      Dpred_voteprob <- predict(state_glm_forecast[[s]]$mod_D, 
+                               newdata=data.frame(avg_poll=hypo_avg_poll), se=T, type="response")
+      Dpred_q <- qt(0.975, df = df.residual(state_glm_forecast[[s]]$mod_D)) ## used in pred interval formula
+        
+      Rpred_voteprob <- predict(state_glm_forecast[[s]]$mod_R, 
+                               newdata=data.frame(avg_poll=hypo_avg_poll), se=T, type="response")
+      Rpred_q <- qt(0.975, df = df.residual(state_glm_forecast[[s]]$mod_R)) ## used in pred interval formula
+
+      state_glm_forecast_outputs <- rbind(
+        state_glm_forecast_outputs,
+        cbind.data.frame(state = s, party = "democrat", x = hypo_avg_poll, 
+                         y = Dpred_voteprob$fit*100, 
+                         ymin = (Dpred_voteprob$fit - Rpred_q*Dpred_voteprob$se.fit)*100,
+                         ymax = (Dpred_voteprob$fit + Rpred_q*Dpred_voteprob$se.fit)*100),
+        cbind.data.frame(state = s, party = "republican", x = hypo_avg_poll, 
+                         y = Rpred_voteprob$fit*100, 
+                         ymin = (Rpred_voteprob$fit - Rpred_q*Rpred_voteprob$se.fit)*100,
+                         ymax = (Rpred_voteprob$fit + Rpred_q*Rpred_voteprob$se.fit)*100)
+      )
+    }
+  }
+}
+
+#####------------------------------------------------------#
+##### Simulating a distribution of election results (PA) ####
+#####------------------------------------------------------#
+
+vep_2020 <- read_csv("../Data/vep_2020.csv")
+
+
+
+vep_df
+vep_df
+
+left_join(vep_df, vep_2020, by = c("year", "state"))
+
+## Get relevant data
+VEP_PA_2020 <- as.integer(vep_df$VEP[vep_df$state == "Pennsylvania" & vep_df$year == 2016])
+
+PA_R <- poll_pvstate_vep_df %>% filter(state=="Pennsylvania", party=="republican")
+PA_D <- poll_pvstate_vep_df %>% filter(state=="Pennsylvania", party=="democrat")
+
+## Fit D and R models
+PA_R_glm <- glm(cbind(R, VEP-R) ~ avg_poll, PA_R, family = binomial)
+PA_D_glm <- glm(cbind(D, VEP-D) ~ avg_poll, PA_D, family = binomial)
+
+## Get predicted draw probabilities for D and R
+prob_Rvote_PA_2020 <- predict(PA_R_glm, newdata = data.frame(avg_poll=48), type="response")[[1]]
+prob_Dvote_PA_2020 <- predict(PA_D_glm, newdata = data.frame(avg_poll=40), type="response")[[1]]
+
+## Get predicted distribution of draws from the population
+sim_Rvotes_PA_2020 <- rbinom(n = 10000, size = VEP_PA_2020, prob = prob_Rvote_PA_2020)
+sim_Dvotes_PA_2020 <- rbinom(n = 10000, size = VEP_PA_2020, prob = prob_Dvote_PA_2020)
+
+## Simulating a distribution of election results: Biden PA PV
+hist(sim_Dvotes_PA_2020, xlab="predicted turnout draws for Biden\nfrom 10,000 binomial process simulations", breaks=100)
+
+## Simulating a distribution of election results: Trump PA PV
+hist(sim_Rvotes_PA_2020, xlab="predicted turnout draws for Trump\nfrom 10,000 binomial process simulations", breaks=100)
+
+## Simulating a distribution of election results: Biden win margin
+sim_elxns_PA_2020 <- ((sim_Dvotes_PA_2020-sim_Rvotes_PA_2020)/(sim_Dvotes_PA_2020+sim_Rvotes_PA_2020))*100
+hist(sim_elxns_PA_2020, xlab="predicted draws of Biden win margin (% pts)\nfrom 10,000 binomial process simulations")
+
+
+```
+
