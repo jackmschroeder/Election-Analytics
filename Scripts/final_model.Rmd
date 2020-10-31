@@ -15,6 +15,30 @@ library(lubridate)
 library(caret)
 library(statebins)
 
+# Things left to do:
+
+# Incorporate demographic data?
+
+# Create other comparison models - can include the REALLY bad state models from earlier - justify move to RF because of obviously incorrect predictions in draws/victory margin
+
+# Need to quantify uncertainty - probably around 3 points is my guess
+
+# SHOW RF with predicting R and D - really bad r-squared
+
+# Explain model validation/parameters - what is the final model?
+
+# Interpretation of model - downside is that it is sort of a black box here
+
+# Need:
+
+# Formula
+# Justification
+# Coefficients/weights
+# Justify these
+# Model validation
+# Uncertainty
+# Graphics
+
 ```
 
 ```{r historical data, include=FALSE}
@@ -236,7 +260,6 @@ data_20$state_abb[is.na(data_20$state_abb)] <- "DC"
 
 ```
 
-
 ```{r old models, echo=FALSE, cache=TRUE}
 # state_glm_forecast <- list()
 # state_glm_forecast_outputs <- data.frame()
@@ -292,7 +315,6 @@ data_20$state_abb[is.na(data_20$state_abb)] <- "DC"
 #   ylab('probability of state-eligible voter voting for party') +
 #   theme_bw()
 ```
-
 
 ```{r state by state, echo=FALSE}
 
@@ -411,29 +433,12 @@ results %>%
   ggplot(aes(fill = Guide, state=state)) +
   geom_statebins() +
   theme_statebins() +
-  scale_fill_manual(values = c("#0000ff", "#ff0000", "#add8e6", "#ffcccb"),
-                    breaks = c("Favor Biden", "Favor Trump", "Lean Biden", "Lean Trump")) +
+  scale_fill_manual(values = c("#0000ff", "#add8e6", "#ffcccb", "#ff0000"),
+                    breaks = c("Favor Biden", "Lean Biden", "Lean Trump", "Favor Trump")) +
+  labs(title = "2020 Election Projection",
+       subtitle = "Biden X, Trump Y.",
+       caption = "The underlying model is a random forest regression that includes various economic/polling indicators.\nRandom forests utilize decision trees with some predictors on some of the data to avoid overfitting.\nThe best of these trees are used together to predict future outcomes.") +
   ggsave("../Plots/final_pv2p.png")
-
-# Things left to do:
-
-# Incorporate demographic data?
-
-# Create other comparison models - can include the REALLY bad state models from earlier - justify move to RF because of obviously incorrect predictions in draws/victory margin
-
-# Within RF - compare to just average support (unadjusted) - probably no difference
-
-# Need to quantify uncertainty - probably around 3 points is my guess
-
-# PV vs PV2P - fix this first, rationale is that pv2p don't add up to 100
-
-# Show RF with predicting R and D - really bad r-squared
-
-# Explain model validation
-
-# Explain model parameters - what is the final model?
-
-# Interpretation of model - downside is that it is sort of a black box here
 
 ```
 
@@ -496,7 +501,6 @@ support_days %>%
 # This is why pv2p>pv
 ```
 
-
 ```{r shytrump, echo=FALSE}
 
 # What if Trump voters are being systematically undercounted?
@@ -535,7 +539,7 @@ shy_results %>%
   ggsave("../Plots/final_shy.png")
 ```
 
-```{r}
+```{r supershytrump, echo=FALSE}
 
 # What if Trump voters are being systematically undercounted?
 # For simplicity, 4 point swing in each state poll & increase in approval
@@ -572,7 +576,6 @@ super_shy_results %>%
        caption = "In this scenario, Trump gets a 8-point polling/approval boost.\nPolling boost is a 8-point swing (Trump up 4, Biden down 4).") +
   ggsave("../Plots/final_super_shy.png")
 ```
-
 
 ```{r fantasyworld, echo=FALSE}
 
@@ -724,4 +727,3 @@ pv_mdem
 mdem
 
 ```
-
