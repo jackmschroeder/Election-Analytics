@@ -123,7 +123,8 @@ consolidated <- left_join(polls_2, polls_10, by = c("year", "state", "candidate_
          state != "NE-1",
          state != "NE-2",
          state != "NE-3",
-         !is.na(party))
+         !is.na(party)) %>% 
+  select(-c(avg_support_2, avg_support_10))
 
 #model1 <- lm(my_pv2p ~ avg_support_2 + avg_support_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a, consolidated)
 
@@ -377,17 +378,11 @@ consolidated_test <- na.omit(consolidated)
 set.seed(07901)
 mrep <- train(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag, consolidated_test, subset = consolidated_test$party == "republican", method = "ranger")
 
-#mrep
-#mrep$results
-
 trump_20 <- data_20 %>% filter(party == "republican")
 trump <- as_tibble(predict(mrep, trump_20))
 
 set.seed(07901)
 mdem <- train(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag, consolidated_test, subset = consolidated_test$party == "democrat", method = "ranger")
-
-#mdem
-#mdem$results
 
 biden_20 <- data_20 %>% filter(party == "democrat")
 biden <- as_tibble(predict(mdem, biden_20))
@@ -399,7 +394,7 @@ states <- data_20 %>%
 states$rep <- trump$value
 states$dem <- biden$value
 
-# Result in turnout instead of R_pv2p
+# Demographic data?
 
 results <- states %>% 
   mutate(R_pv2p = rep/(rep+dem),
@@ -411,7 +406,7 @@ results %>%
   ggplot(aes(fill = certainty, state=state)) +
   geom_statebins() +
   theme_statebins() +
-  scale_fill_manual(values = c("darkblue", "darkred", "blue", "red"),
+  scale_fill_manual(values = c("#0000ff", "#ff0000", "#add8e6", "#ffcccb"),
                     breaks = c("Favor Biden", "Favor Trump", "Lean Biden", "Lean Trump")) +
   ggsave("../Plots/final.png")
 
