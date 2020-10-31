@@ -373,16 +373,23 @@ data_20$state_abb[is.na(data_20$state_abb)] <- "DC"
 
 ```{r rf, echo=FALSE}
 
-consolidated_test <- na.omit(consolidated)
+consolidated_omit <- na.omit(consolidated)
+
+# Get rid of any possible problems with outcome variables being present in data.
+
+model_data <- consolidated_omit %>% 
+  select(-c(winner, pv2p, total, D, R, R_pv2p, D_pv2p, D_pv, R_pv, VEP, VAP))
 
 set.seed(07901)
-mrep <- train(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag, consolidated_test, subset = consolidated_test$party == "republican", method = "ranger")
+mrep <- train(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag, model_data, subset = model_data$party == "republican", method = "ranger")
+
+mrep
 
 trump_20 <- data_20 %>% filter(party == "republican")
 trump <- as_tibble(predict(mrep, trump_20))
 
 set.seed(07901)
-mdem <- train(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag, consolidated_test, subset = consolidated_test$party == "democrat", method = "ranger")
+mdem <- train(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag, model_data, subset = model_data$party == "democrat", method = "ranger")
 
 biden_20 <- data_20 %>% filter(party == "democrat")
 biden <- as_tibble(predict(mdem, biden_20))
@@ -394,22 +401,327 @@ states <- data_20 %>%
 states$rep <- trump$value
 states$dem <- biden$value
 
-# Demographic data?
-
 results <- states %>% 
   mutate(R_pv2p = rep/(rep+dem),
          D_pv2p = dem/(rep+dem),
          winner = ifelse(R_pv2p > D_pv2p, "Trump", "Biden"),
-         certainty = ifelse(R_pv2p > D_pv2p, ifelse(R_pv2p > 0.55, "Favor Trump", "Lean Trump"), ifelse(D_pv2p < 0.55, "Lean Biden", "Favor Biden")))
+         Guide = ifelse(R_pv2p > D_pv2p, ifelse(R_pv2p > 0.55, "Favor Trump", "Lean Trump"), ifelse(D_pv2p < 0.55, "Lean Biden", "Favor Biden")))
 
 results %>% 
-  ggplot(aes(fill = certainty, state=state)) +
+  ggplot(aes(fill = Guide, state=state)) +
   geom_statebins() +
   theme_statebins() +
   scale_fill_manual(values = c("#0000ff", "#ff0000", "#add8e6", "#ffcccb"),
                     breaks = c("Favor Biden", "Favor Trump", "Lean Biden", "Lean Trump")) +
-  ggsave("../Plots/final.png")
+  ggsave("../Plots/final_pv2p.png")
+
+# Things left to do:
+
+# Incorporate demographic data?
+
+# Create other comparison models - can include the REALLY bad state models from earlier - justify move to RF because of obviously incorrect predictions in draws/victory margin
+
+# Within RF - compare to just average support (unadjusted) - probably no difference
+
+# Need to quantify uncertainty - probably around 3 points is my guess
+
+# PV vs PV2P - fix this first, rationale is that pv2p don't add up to 100
+
+# Show RF with predicting R and D - really bad r-squared
+
+# Explain model validation
+
+# Explain model parameters - what is the final model?
+
+# Interpretation of model - downside is that it is sort of a black box here
 
 ```
 
+```{r undecided, echo=FALSE, message=FALSE}
+# The big thing on uncertainty is that the poll number sum should converge on 100 as we get closer - show this graphically to demonstrate it is the case
+
+# This is a small snapshot of the evidence - fewer uncertain voters 2 weeks out vs 10 weeks out
+
+consolidated %>% 
+  group_by(year, state) %>% 
+  summarize(sum_2 = sum(avg_support_adjusted_2),
+            sum_10 = sum(avg_support_adjusted_10)) %>% 
+  mutate(which = ifelse(sum_2>sum_10, 1, 0)) %>% 
+  filter(!is.na(which)) %>% 
+  ungroup() %>% 
+  count(which)
+
+support_days <- read_csv("../Data/pres_pollaverages_1968-2016.csv") %>% 
+  select(cycle, state, modeldate, candidate_name, pct_estimate, pct_trend_adjusted, election_date) %>% 
+  rename(year = cycle) %>% 
+  mutate(modeldate = as.Date(modeldate, "%m/%d/%Y"),
+         election_date = as.Date(election_date, "%m/%d/%Y"),
+         days_to = as.numeric(difftime(election_date, modeldate, unit="days")),
+         weeks_to = difftime(election_date, modeldate, unit="weeks")) %>% 
+  group_by(year, state, candidate_name, days_to, weeks_to) %>% 
+  summarize(avg_support = mean(pct_trend_adjusted)) %>% 
+  left_join(., names, by = c("year", "candidate_name")) %>% 
+  filter(!is.na(party)) %>% 
+  # Taking out 1992 because of Perot.
+  filter(year != 1992) %>% 
+  # Attempted to weigh national undecideds more heavily. Didn't work.
+  #mutate(avg_support = case_when(state == "National" ~ avg_support * 50,
+  #                               TRUE ~ avg_support)) %>% 
+  group_by(year, state, days_to) %>% 
+  summarize(sum_support = sum(avg_support)) %>% 
+  group_by(year, days_to) %>% 
+  summarize(sum_support = mean(sum_support),
+            n = n())%>% 
+  group_by(days_to) %>% 
+  summarize(avg_supporting = mean(sum_support),
+            modeldays = sum(n)) %>% 
+  # modeldays counts every individual model entry (per candidate per state per cycle) on that day - we want at least 300 to make sure the model isn't acting wonky
+  filter(modeldays > 300,
+         days_to < 100) %>% 
+  mutate(undecided = 100-avg_supporting)
+
+support_days %>% 
+  ggplot(aes(x=days_to, y=undecided)) +
+  geom_point() +
+  geom_smooth() +
+  labs(x = "Days to Election",
+       y = "Undecided Voters (in Polling Averages)",
+       title = "Number of Undecided Poll Respondents Decreases as Election Nears",
+       subtitle = "Sharp decrease in last few weeks of campaigning.",
+       caption = "Undecideds are voters unaligned to major-party candidates.\nThis metric is calculated for every state/national poll since 1968 for every day until election.\n1992 excluded due to substantial third-party support.") +
+  ggsave("../Plots/undecided.png",
+         width=8,
+         height=5)
+
+# This is why pv2p>pv
+```
+
+
+```{r shytrump, echo=FALSE}
+
+# What if Trump voters are being systematically undercounted?
+# For simplicity, 4 point swing in each state poll & increase in approval
+
+# Get rid of any possible problems with outcome variables being present in data.
+
+shy_trump_20 <- data_20 %>% filter(party == "republican") %>% mutate(avg_support_adjusted_2 = avg_support_adjusted_2 + 2, avg_support_adjusted_10 = avg_support_adjusted_10 + 2, pres_app = pres_app + 4)
+shy_trump <- as_tibble(predict(mrep, shy_trump_20))
+
+shy_biden_20 <- data_20 %>% filter(party == "democrat") %>% mutate(avg_support_adjusted_2 = avg_support_adjusted_2 - 2, avg_support_adjusted_10 = avg_support_adjusted_10 - 2, pres_app = pres_app + 4)
+shy_biden <- as_tibble(predict(mdem, shy_biden_20))
+
+shy_states <- data_20 %>% 
+  group_by(state) %>% 
+  summarize(mean = mean(pres_app)) %>% 
+  select(state)
+shy_states$rep <- shy_trump$value
+shy_states$dem <- shy_biden$value
+
+shy_results <- shy_states %>% 
+  mutate(R_pv2p = rep/(rep+dem),
+         D_pv2p = dem/(rep+dem),
+         winner = ifelse(R_pv2p > D_pv2p, "Trump", "Biden"),
+         Guide = ifelse(R_pv2p > D_pv2p, ifelse(R_pv2p > 0.55, "Favor Trump", "Lean Trump"), ifelse(D_pv2p < 0.55, "Lean Biden", "Favor Biden")))
+
+shy_results %>% 
+  ggplot(aes(fill = Guide, state=state)) +
+  geom_statebins() +
+  theme_statebins() +
+  scale_fill_manual(values = c("#0000ff", "#add8e6", "#ffcccb", "#ff0000"),
+                    breaks = c("Favor Biden", "Lean Biden", "Lean Trump", "Favor Trump")) +
+  labs(title = "'Shy Trump' Projection",
+       subtitle = "Biden X, Trump Y.",
+       caption = "In this scenario, Trump gets a 4-point polling/approval boost.\nPolling boost is a 4-point swing (Trump up 2, Biden down 2).") +
+  ggsave("../Plots/final_shy.png")
+```
+
+```{r}
+
+# What if Trump voters are being systematically undercounted?
+# For simplicity, 4 point swing in each state poll & increase in approval
+
+# Get rid of any possible problems with outcome variables being present in data.
+
+super_shy_trump_20 <- data_20 %>% filter(party == "republican") %>% mutate(avg_support_adjusted_2 = avg_support_adjusted_2 + 4, avg_support_adjusted_10 = avg_support_adjusted_10 + 4, pres_app = pres_app + 8)
+super_shy_trump <- as_tibble(predict(mrep, super_shy_trump_20))
+
+super_shy_biden_20 <- data_20 %>% filter(party == "democrat") %>% mutate(avg_support_adjusted_2 = avg_support_adjusted_2 - 4, avg_support_adjusted_10 = avg_support_adjusted_10 - 4, pres_app = pres_app + 8)
+super_shy_biden <- as_tibble(predict(mdem, super_shy_biden_20))
+
+super_shy_states <- data_20 %>% 
+  group_by(state) %>% 
+  summarize(mean = mean(pres_app)) %>% 
+  select(state)
+super_shy_states$rep <- super_shy_trump$value
+super_shy_states$dem <- super_shy_biden$value
+
+super_shy_results <- super_shy_states %>% 
+  mutate(R_pv2p = rep/(rep+dem),
+         D_pv2p = dem/(rep+dem),
+         winner = ifelse(R_pv2p > D_pv2p, "Trump", "Biden"),
+         Guide = ifelse(R_pv2p > D_pv2p, ifelse(R_pv2p > 0.55, "Favor Trump", "Lean Trump"), ifelse(D_pv2p < 0.55, "Lean Biden", "Favor Biden")))
+
+super_shy_results %>% 
+  ggplot(aes(fill = Guide, state=state)) +
+  geom_statebins() +
+  theme_statebins() +
+  scale_fill_manual(values = c("#0000ff", "#add8e6", "#ffcccb", "#ff0000"),
+                    breaks = c("Favor Biden", "Lean Biden", "Lean Trump", "Favor Trump")) +
+  labs(title = "'Super Shy Trump' Projection",
+       subtitle = "Biden X, Trump Y.",
+       caption = "In this scenario, Trump gets a 8-point polling/approval boost.\nPolling boost is a 8-point swing (Trump up 4, Biden down 4).") +
+  ggsave("../Plots/final_super_shy.png")
+```
+
+
+```{r fantasyworld, echo=FALSE}
+
+# A better world for Trump - zero economic growth, 25% lower unemployment, 50% approval, six point swing in polls for all states
+
+#mrep
+
+fan_trump_20 <- data_20 %>% 
+  filter(party == "republican") %>% 
+  mutate(avg_support_adjusted_2 = avg_support_adjusted_2 + 3.25, 
+         avg_support_adjusted_10 = avg_support_adjusted_10 + 3.25,
+         unemployment_loc_a = .75*unemployment_loc_a,
+         GDP_growth_a = 0,
+         pres_app = 50)
+
+fan_trump <- as_tibble(predict(mrep, fan_trump_20))
+
+fan_biden_20 <- data_20 %>% 
+  filter(party == "democrat") %>% 
+  mutate(avg_support_adjusted_2 = avg_support_adjusted_2 - 3.25, 
+         avg_support_adjusted_10 = avg_support_adjusted_10 - 3.25,
+         unemployment_loc_a = .75*unemployment_loc_a,
+         GDP_growth_a = 0,
+         pres_app = 50)
+
+fan_biden <- as_tibble(predict(mdem, fan_biden_20))
+
+fan_states <- data_20 %>% 
+  group_by(state) %>% 
+  summarize(mean = mean(pres_app)) %>% 
+  select(state)
+fan_states$rep <- fan_trump$value
+fan_states$dem <- fan_biden$value
+
+fan_results <- fan_states %>% 
+  mutate(R_pv2p = rep/(rep+dem),
+         D_pv2p = dem/(rep+dem),
+         winner = ifelse(R_pv2p > D_pv2p, "Trump", "Biden"),
+         Guide = ifelse(R_pv2p > D_pv2p, ifelse(R_pv2p > 0.55, "Favor Trump", "Lean Trump"), ifelse(D_pv2p < 0.55, "Lean Biden", "Favor Biden")))
+
+fan_results %>% 
+  ggplot(aes(fill = Guide, state=state)) +
+  geom_statebins() +
+  theme_statebins() +
+  scale_fill_manual(values = c("#0000ff", "#add8e6", "#ffcccb", "#ff0000"),
+                    breaks = c("Favor Biden", "Lean Biden", "Lean Trump", "Favor Trump")) +
+  labs(title = "'Corona? Schmorona!' Projection",
+       subtitle = "Biden X, Trump Y.",
+       caption = "In this scenario, Trump gets a 6.5-point polling boost, a better economy, and higher approval.\nPolling boost is a 6.5-point swing (Trump up 3.5, Biden down 3.5).\nAnnual GDP growth is 0, state unemployment rates shrink by 25%, approval goes up to 50%.") +
+  ggsave("../Plots/final_fan.png")
+```
+
+```{r pv, echo=FALSE}
+
+# The problem here is that just going off of PV means there's room for third parties - the ghost of 1992 is a strong showing from Perot (even when )
+
+pv_econ_d <- read_csv("../Data/model_input_local.csv") %>% 
+  filter(party == "democrat") %>% 
+  mutate(D_pv = D/total) %>% 
+  group_by(state) %>% 
+  mutate(D_pv_lag = lag(D_pv, order_by = year)) %>% 
+  select(year, party, state, D_pv, D_pv_lag)
+
+pv_econ <- read_csv("../Data/model_input_local.csv") %>% 
+  filter(party == "republican") %>% 
+  mutate(R_pv = R/total) %>% 
+  group_by(state) %>% 
+  mutate(R_pv_lag = lag(R_pv, order_by = year)) %>% 
+  select(year, party, state, R_pv, R_pv_lag) %>% 
+  full_join(., pv_econ_d, by = c("year", "party", "state")) %>% 
+  mutate(my_pv = case_when(party == "republican" ~ R_pv*100,
+                           party == "democrat" ~ D_pv*100),
+         my_pv_lag = case_when(party == "republican" ~ R_pv_lag*100,
+                               party == "democrat" ~ D_pv_lag*100)) %>% 
+  select(year, party, state, my_pv, my_pv_lag)
+
+pv_incumbent_d <- read_csv("../Data/popvote_1948-2016.csv") %>% 
+  select(-c(candidate, pv2p)) %>% 
+  filter(party == "democrat") %>% 
+  mutate(my_us_pv_lag = lag(pv, order_by = year)) %>% 
+  select(year, party, pv, my_us_pv_lag)
+  
+pv_incumbent <- read_csv("../Data/popvote_1948-2016.csv") %>% 
+  select(-c(candidate, pv2p)) %>% 
+  filter(party == "republican") %>% 
+  mutate(my_us_pv_lag = lag(pv, order_by = year)) %>% 
+  select(year, party, pv, my_us_pv_lag) %>% 
+  rbind(., pv_incumbent_d) %>% 
+  left_join(., pv_econ, by = c("year", "party"))
+
+pv_model_data <- consolidated_omit %>% 
+  left_join(., pv_incumbent, by = c("year", "party", "state"))
+
+pv_votes_20 <- read_csv("../Data/popvote_bystate_1948-2016.csv") %>% 
+  filter(year == 2016) %>%
+  mutate(R_pv_16 = R/total,
+         D_pv_16 = D/total) %>% 
+  select(state, R_pv_16, D_pv_16)
+
+pv_biden_20 <- biden_20 %>% 
+  mutate(my_us_pv_lag = 51.16) %>% 
+  left_join(., pv_votes_20, by = "state") %>% 
+  rename(my_pv_lag = D_pv_16) %>% 
+  select(-R_pv_16)
+
+pv_trump_20 <- trump_20 %>% 
+  mutate(my_us_pv_lag = 48.83) %>% 
+  left_join(., pv_votes_20, by = "state") %>% 
+  rename(my_pv_lag = R_pv_16) %>% 
+  select(-D_pv_16)
+
+# Then model
+
+set.seed(07901)
+pv_mrep <- train(my_pv ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv_lag, pv_model_data, subset = pv_model_data$party == "republican", method = "ranger")
+
+pv_trump <- as_tibble(predict(pv_mrep, pv_trump_20))
+
+set.seed(07901)
+pv_mdem <- train(my_pv ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv_lag, pv_model_data, subset = pv_model_data$party == "democrat", method = "ranger")
+
+pv_biden <- as_tibble(predict(pv_mdem, pv_biden_20))
+
+pv_states <- data_20 %>% 
+  group_by(state) %>% 
+  summarize(mean = mean(pres_app)) %>% 
+  select(state)
+pv_states$rep <- pv_trump$value
+pv_states$dem <- pv_biden$value
+
+pv_results <- pv_states %>% 
+  mutate(R_pv2p = rep/(rep+dem),
+         D_pv2p = dem/(rep+dem),
+         winner = ifelse(R_pv2p > D_pv2p, "Trump", "Biden"),
+         Guide = ifelse(rep > dem, ifelse(rep-dem > 10, "Favor Trump", "Lean Trump"), ifelse(dem-rep < 10, "Lean Biden", "Favor Biden")),
+         p3 = 100-rep-dem)
+
+# Third party vote is WAY too high
+
+pv_results %>% 
+  ggplot(aes(fill = Guide, state=state)) +
+  geom_statebins() +
+  theme_statebins() +
+  scale_fill_manual(values = c("#0000ff", "#ff0000", "#add8e6", "#ffcccb"),
+                    breaks = c("Favor Biden", "Favor Trump", "Lean Biden", "Lean Trump")) +
+  ggsave("../Plots/final_pv.png")
+
+pv_mdem
+mdem
+
+```
 
