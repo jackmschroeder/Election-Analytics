@@ -17,3 +17,5 @@ Hello! I am a senior at Harvard studying Government and Data Science, with a sec
 ## [Week 6: The Ground Game (10.17.20)](Posts/week6.md)
 
 ## [Week 7: Shocks and Covid-19 (10.24.20)](Posts/week7.md)
+
+## [Final Prediction (11.1.20)](Posts/final.md)
