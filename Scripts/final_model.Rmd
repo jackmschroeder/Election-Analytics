@@ -458,7 +458,10 @@ importance <- cbind(imp_rep, imp_dem) %>%
   pivot_longer(!value, names_to = "model",
               values_to = "importance")
 
+
+
 importance %>% 
+  mutate(importance = scales::rescale(importance)) %>% 
   ggplot(aes(y=value, x=importance, color=model)) +
   geom_point() +
   theme_bw() +
@@ -467,7 +470,7 @@ importance %>%
   labs(title = "Relative Variable Importance",
        subtitle = "Polling and lagged voteshare dominate economic indicators.",
        caption = "\nModel and graphic created by Jack Schroeder.",
-       x = "Variable Importance",
+       x = "Relative Importance",
        y = "Variable",
        color = "Model") +
   ggsave("../Plots/importance.png")
@@ -1090,8 +1093,8 @@ rmse_tbl <- data.frame(`wOriginal Model`, `wFinal Model (R)`, `wFinal Model (D)`
     names_to = "Model",
                values_to = "RMSE") %>% 
   mutate(Model = case_when(Model == "wOriginal.Model" ~ "Original",
-                           Model == "wFinal.Model..R." ~ "Final (R)",
-                           Model == "wFinal.Model..D." ~ "Final (D)",
+                           Model == "wFinal.Model..R." ~ "Two-Party (R)",
+                           Model == "wFinal.Model..D." ~ "Two-Party (D)",
                            Model == "wRF.PV..D." ~ "Unscaled (R)",
                            Model == "wRF.PV..R." ~ "Unscaled (D)",
                            Model == "wIncumbent..R." ~ "Incumbent (R)",
@@ -1100,8 +1103,8 @@ rmse_tbl <- data.frame(`wOriginal Model`, `wFinal Model (R)`, `wFinal Model (D)`
   rbind(., raw_rmse) %>% 
   rbind(., raw_rmse2) %>% 
   gt() %>% 
-  tab_header(title = "RMSE of Election Models",
-             subtitle = "Final Models Balance RMSE and Interpretability") %>% 
+  tab_header(title = "Evaluating Model Error",
+             subtitle = "All Random Forest Models Beat Original Model") %>% 
   tab_source_note(source_note = c("RMSE in % points of state vote totals unless noted.", "Models and graphic created by Jack Schroeder.")) %>% 
   gtsave("../Plots/rmse.png")
 
