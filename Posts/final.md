@@ -78,17 +78,55 @@ With all of that background in mind, I can now reveal my 2020 prediction. The ma
 
 The conclusions:
 
-(1) Biden appears *likely* to beat Trump, getting 334 electoral votes from my two-party voteshare models. The most important swing states - Pennsylvania, Florida, Arizona, etc. - lean in his direction, along with others like Wisconsin, Michigan, and North Carolina.
+(1) Biden appears *likely* to beat Trump, getting 334 electoral votes from my two-party voteshare models. The most important swing states - Pennsylvania, Florida, Arizona, etc. - lean in his direction (although by less than four points), along with others like Wisconsin, Michigan, and North Carolina.
 
-(2) This map could look worse for Trump - he is favored in Georgia and Texas - but his leads in states like Alaska, Missouri, and South Carolina are narrower than expected.
+(2) This map could look worse for Trump - he is favored in Georgia and Texas (by less than two points in both) - but his leads in states like Alaska, Missouri, and South Carolina are narrower than expected.
 
-(3) I’m happy I got the `statebins` look to work, but this map could better represent the uncertainty around the outcome. Even if I treated each model individually, the Republican model has an RMSE of 3.14 points, which represents a sizable swing on its own. **Trump is not out of this fight.** If one sees the error of this model as simply the RMSE of both models combined - I know this isn’t accurate, but it’s useful for explaining this - most of the “lean” states are very much in play.
+(3) I’m happy I got the `statebins` look to work, but this map could better represent the uncertainty around the outcome. Even if I treated each model individually, the Republican model has an RMSE of 3.14 points, which represents a sizable swing on its own. **Trump is not out of this fight.** If one sees the error of this model as simply the RMSE of both models combined - I know this isn’t accurate, but it’s useful for explaining this - **seven states are within this additive margin of error alone**: Texas, Iowa, Ohio, Georgia, North Carolina, Arizona, and Florida (who combine for 133 electoral votes).
 
 (4) I could devote pages to the limitations of this model, but chief among them is not dynamically modeling turnout in face of early voting/the pandemic. Another worth mentioning quickly is that this model can’t predict any factors happening outside of the voting process, such as how those votes are counted, which votes may be thrown out, etc. I’d be much more comfortable with the model’s limitations in a different cycle, but since we live the world 2020 has given us, I’m *very* cautious about talking up the strength of my model. A major takeaway from this class is that **uncertainty is OK** in forecasting.
 
 ### Other Scenarios
 
+I wanted to explore some possible scenarios and an alternate universe where the pandemic wasn’t as bad. To do this, I made changes to some of the predictors (polling averages, approval, economic indicators) before they were fed into the model. These aren’t meant to be definitive by any means - they’re just for fun. Here they are!
 
+#### Shy Trump
+
+First up is lending some weight to the “shy Trump voter” theory, which asserts that Trump support is systematically undercounted due to social desirability bias or non-response bias. The theory sounds promising at first glance, but as Silver (2020) notes, there doesn’t seem to be a uniform effect of this on electoral outcomes. Whatever the case, I decided to indulge the theory’s proponents and model based off of a four-point polling swing (Trump’s numbers up 2, Biden’s down 2) and approval boost to see how it would impact the predicted outcome:
+
+![Shy Trump](../Plots/final_shy.png)
+
+Biden still edges out a victory on this map, but the result is anything but certain. Every swing state is still in play: Trump wins North Carolina, Florida, and Arizona by less than a point, and Biden carries Pennsylvania, Nevada, and Wisconsin by less than two. With the expected error, this is a much more open map than before - 9 states within the combined margin described above (GA, NC, FL, AZ, PA, NV, WI, MI, MN).
+
+#### Super Shy Trump
+
+I could go even further with the Trump boosters - a uniform eight-point swing in the polls and boost in the approval rating. This one is purely for fun purposes - it’s *very, very, very* unlikely the polls are anywhere this wrong.
+
+![Super Shy Trump](../Plots/final_super_shy.png)
+
+The map shows a Trump victory (but not one as big as 2016). Ten states are within that margin: AZ, FL, PA, NV, WI, MI, MN, NH, VA, and CO. Again, this outcome would be extremely, extremely unlikely.
+
+#### Same Errors as 2016
+
+The two above scenarios are both pretty unlikely and unscientific. Instead of having a uniform error across the board, what if each swing state was off exactly the same way since 2016 (polling errors from Silver 2020)? This isn’t likely - pollsters have made lots of changes and errors are, to a certain extent, random - but here are the results:
+
+![2016 Error](../Plots/final_error.png)
+
+Biden still gets a sizable victory here. This is pretty similar to Silver (2020)’s results (which were just added to the vote shares post-model). Interestingly, Maine is now within the margin, along with some of the usual suspects (TX, NC, GA, WI, FL, PA, AZ, MN, and MI).
+
+#### Pandemic-Lite (Corona? Schmorona!)
+
+Finally, let’s maneuver over to a world with a much more subdued coronavirus (or a better handling of it). Trump receives a 6.5-point polling swing in his favor, GDP growth is 0 (still not great, but definitely better than the alternative), state unemployment rates shrink by 25% (lighter recession), and approval goes up to 50% (which was at least a possibility pre-pandemic).
+
+![Pandemic-Lite Trump](../Plots/final_fan.png)
+
+Trump gets the nod in this map, but it’s pretty close. Pennsylvania is within half a point, and there are nine other states within the margin (AZ, FL, NV, WI, MN, MI, NH, VA, and CO). This implies that Trump wasn’t exactly invulnerable before the virus; even if the handling had gone better and certain indicators swung his way, the election would still look to be very competitive.
+
+### Final Thoughts
+
+Where does this leave us? **I’m picking Biden to win, but don’t count Trump out.** Uncertainty is king, especially in 2020, and numerous states look to be in play. While I’m proud of my model, I recognize its limitations, especially in a post-2016 world where much of the country is still scarred by state-specific polling error. Biden has many factors going for him: good polling, a lagging economy, low incumbent approval. That said, my model indicates that lagged state voteshare is about as important as polling averages, and Trump’s broad victory in 2016 may help him hold on in key states. Outside of that, other factors outside of my model could play a large role in deciding the outcome.
+
+The verdict? A betting man would put money on Biden, but a smarter man would save that money and invest it elsewhere. People can be hard to predict.
 ### References
 
 Allcott, H., et al. (2020). "Polarization and public health: Partisan differences in social distancing during the coronavirus pandemic." *Journal of Public Economics* 191. November 2020. Accessed online.

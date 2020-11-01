@@ -440,6 +440,22 @@ results %>%
   group_by(winner) %>% 
   tally(`2020`)
 
+pv2p_results <- results %>% 
+  left_join(., elec, by = "state") %>% 
+  select(state, R_pv2p, D_pv2p, `2020`) %>% 
+  mutate(D_pv2p = round(D_pv2p * 100, 1),
+         R_pv2p = round(R_pv2p * 100, 1))
+
+pv2p_results %>% 
+  filter(abs(R_pv2p - D_pv2p) < 6.04) %>% 
+  arrange(desc(D_pv2p)) %>% 
+  tally(`2020`)
+
+```
+
+
+```{r importance, echo=FALSE, cache=TRUE}
+
 # Importance of variables - create natively
 
 set.seed(07901)
@@ -578,6 +594,12 @@ shy_results %>%
   select(state, R_pv2p, D_pv2p, winner, Guide, `2020`) %>% 
   group_by(winner) %>% 
   tally(`2020`)
+
+shy_results %>% 
+  select(state, R_pv2p, D_pv2p) %>% 
+  mutate(margin = abs(R_pv2p - D_pv2p)) %>% 
+  filter(margin < 0.0604) %>% 
+  arrange(desc(R_pv2p))
 ```
 
 ```{r supershytrump, echo=FALSE, cache=TRUE}
@@ -622,6 +644,10 @@ super_shy_results %>%
   select(state, R_pv2p, D_pv2p, winner, Guide, `2020`) %>% 
   group_by(winner) %>% 
   tally(`2020`)
+
+super_shy_results %>% 
+  filter(abs(R_pv2p - D_pv2p) < 0.0604) %>% 
+  arrange(desc(R_pv2p - D_pv2p))
 ```
 
 ```{r fantasyworld, echo=FALSE, cache=TRUE}
@@ -679,6 +705,11 @@ fan_results %>%
   select(state, R_pv2p, D_pv2p, winner, Guide, `2020`) %>% 
   group_by(winner) %>% 
   tally(`2020`)
+
+fan_results %>% 
+  filter(abs(R_pv2p - D_pv2p) < 0.0604) %>% 
+  arrange(desc(R_pv2p - D_pv2p)) %>% 
+  select(state, R_pv2p, D_pv2p)
 ```
 
 ```{r pv, echo=FALSE, cache=TRUE}
@@ -906,6 +937,10 @@ error_results %>%
   select(state, R_pv2p, D_pv2p, winner, Guide, `2020`) %>% 
   group_by(winner) %>% 
   tally(`2020`)
+
+error_results %>% 
+  filter(abs(R_pv2p - D_pv2p) < 0.0604) %>% 
+  arrange(desc(R_pv2p - D_pv2p))
 
 ```
 
