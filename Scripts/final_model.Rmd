@@ -11,23 +11,11 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(ggplot2)
 library(geofacet)
+library(gt)
 library(lubridate)
+library(randomForest)
 library(caret)
 library(statebins)
-
-# Things left to do:
-
-# Incorporate demographic data?
-
-# Create other comparison models - can include the REALLY bad state models from earlier - justify move to RF because of obviously incorrect predictions in draws/victory margin
-
-# Need to quantify uncertainty - probably around 3 points is my guess
-
-# SHOW RF with predicting R and D - really bad r-squared
-
-# Explain model validation/parameters - what is the final model?
-
-# Interpretation of model - downside is that it is sort of a black box here
 
 # Need:
 
@@ -45,7 +33,7 @@ library(statebins)
 
 # Results by state
 
-results <- read_csv("../Data/popvote_bystate_1948-2016.csv")
+votedata <- read_csv("../Data/popvote_bystate_1948-2016.csv")
 
 # Take COVI and use it for turnout draw?
 
@@ -133,7 +121,7 @@ polls_10 <- read_csv("../Data/pres_pollaverages_1968-2016.csv") %>%
 consolidated <- left_join(polls_2, polls_10, by = c("year", "state", "candidate_name")) %>% 
   left_join(., names, by = c("year", "candidate_name")) %>% 
   left_join(., incumbent, by = c("year", "party")) %>% 
-  left_join(., results, by = c("year", "state")) %>% 
+  left_join(., votedata, by = c("year", "state")) %>% 
   left_join(., app, by = c("year")) %>% 
   left_join(., econ, by = c("year", "state", "party")) %>% 
   left_join(., vep, by = c("year", "state")) %>% 
@@ -156,9 +144,15 @@ consolidated <- left_join(polls_2, polls_10, by = c("year", "state", "candidate_
 
 final_model <- lm(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag, consolidated)
 
+# as_tibble(final_model$residuals) %>% 
+#   mutate(sqe = value^2) %>% 
+#   summarize(rmse = mean(sqe))
+
+rmse_final_model <- sqrt(mean(final_model$residuals^2))
+
 #AICtab(model1, final_model)
 
-summary(final_model)
+#summary(final_model)
 
 consolidated$D_pv <- (consolidated$D / consolidated$total)*100
 consolidated$R_pv <- (consolidated$R / consolidated$total)*100
@@ -393,7 +387,7 @@ data_20$state_abb[is.na(data_20$state_abb)] <- "DC"
 
 ```
 
-```{r rf, echo=FALSE}
+```{r rf, echo=FALSE, cache=TRUE}
 
 consolidated_omit <- na.omit(consolidated)
 
@@ -404,8 +398,6 @@ model_data <- consolidated_omit %>%
 
 set.seed(07901)
 mrep <- train(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag, model_data, subset = model_data$party == "republican", method = "ranger")
-
-mrep
 
 trump_20 <- data_20 %>% filter(party == "republican")
 trump <- as_tibble(predict(mrep, trump_20))
@@ -436,13 +428,52 @@ results %>%
   scale_fill_manual(values = c("#0000ff", "#add8e6", "#ffcccb", "#ff0000"),
                     breaks = c("Favor Biden", "Lean Biden", "Lean Trump", "Favor Trump")) +
   labs(title = "2020 Election Projection",
-       subtitle = "Biden X, Trump Y.",
-       caption = "The underlying model is a random forest regression that includes various economic/polling indicators.\nRandom forests utilize decision trees with some predictors on some of the data to avoid overfitting.\nThe best of these trees are used together to predict future outcomes.") +
+       subtitle = "Biden 334, Trump 204.",
+       caption = "The underlying model is a random forest regression that includes various economic/polling indicators.\nRandom forests utilize decision trees with some predictors on some of the data to avoid overfitting.\nThe best of these trees are used together to predict future outcomes.\nModel and graphic created by Jack Schroeder.") +
   ggsave("../Plots/final_pv2p.png")
 
+# EC tally
+
+results %>% 
+  left_join(., elec, by = "state") %>% 
+  select(state, R_pv2p, D_pv2p, winner, Guide, `2020`) %>% 
+  group_by(winner) %>% 
+  tally(`2020`)
+
+# Importance of variables - create natively
+
+set.seed(07901)
+mrep_rf <- randomForest(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag, model_data, subset = model_data$party == "republican")
+
+set.seed(07901)
+mdem_rf <- randomForest(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag, model_data, subset = model_data$party == "democrat", method = "ranger")
+
+imp_rep <- as.data.frame(mdem_rf$importance) %>% 
+  rename(Republican = IncNodePurity)
+imp_dem <- as.data.frame(mrep_rf$importance) %>% 
+  rename(Democrat = IncNodePurity)
+
+importance <- cbind(imp_rep, imp_dem) %>% 
+  cbind(., as_tibble_col(c("2-week Support", "10-week Support", "Lagged State Voteshare", "Presidential Approval", "Incumbent Party", "Annual GDP Growth", "Annual Local Unemployment", "Lagged National Voteshare"))) %>% 
+  pivot_longer(!value, names_to = "model",
+              values_to = "importance")
+
+importance %>% 
+  ggplot(aes(y=value, x=importance, color=model)) +
+  geom_point() +
+  theme_bw() +
+  scale_color_manual(values = c("#0000ff", "#ff0000"),
+                    breaks = c("Democrat", "Republican")) +
+  labs(title = "Relative Variable Importance",
+       subtitle = "Polling and lagged voteshare dominate economic indicators.",
+       caption = "\nModel and graphic created by Jack Schroeder.",
+       x = "Variable Importance",
+       y = "Variable",
+       color = "Model") +
+  ggsave("../Plots/importance.png")
 ```
 
-```{r undecided, echo=FALSE, message=FALSE}
+```{r undecided, echo=FALSE, cache=TRUE, message=FALSE}
 # The big thing on uncertainty is that the poll number sum should converge on 100 as we get closer - show this graphically to demonstrate it is the case
 
 # This is a small snapshot of the evidence - fewer uncertain voters 2 weeks out vs 10 weeks out
@@ -501,7 +532,7 @@ support_days %>%
 # This is why pv2p>pv
 ```
 
-```{r shytrump, echo=FALSE}
+```{r shytrump, echo=FALSE, cache=TRUE}
 
 # What if Trump voters are being systematically undercounted?
 # For simplicity, 4 point swing in each state poll & increase in approval
@@ -534,12 +565,18 @@ shy_results %>%
   scale_fill_manual(values = c("#0000ff", "#add8e6", "#ffcccb", "#ff0000"),
                     breaks = c("Favor Biden", "Lean Biden", "Lean Trump", "Favor Trump")) +
   labs(title = "'Shy Trump' Projection",
-       subtitle = "Biden X, Trump Y.",
-       caption = "In this scenario, Trump gets a 4-point polling/approval boost.\nPolling boost is a 4-point swing (Trump up 2, Biden down 2).") +
+       subtitle = "Biden 279, Trump 259.",
+       caption = "In this scenario, Trump gets a 4-point polling/approval boost.\nPolling boost is a 4-point swing (Trump up 2, Biden down 2).\nModel and graphic created by Jack Schroeder.") +
   ggsave("../Plots/final_shy.png")
+
+shy_results %>% 
+  left_join(., elec, by = "state") %>% 
+  select(state, R_pv2p, D_pv2p, winner, Guide, `2020`) %>% 
+  group_by(winner) %>% 
+  tally(`2020`)
 ```
 
-```{r supershytrump, echo=FALSE}
+```{r supershytrump, echo=FALSE, cache=TRUE}
 
 # What if Trump voters are being systematically undercounted?
 # For simplicity, 4 point swing in each state poll & increase in approval
@@ -572,12 +609,18 @@ super_shy_results %>%
   scale_fill_manual(values = c("#0000ff", "#add8e6", "#ffcccb", "#ff0000"),
                     breaks = c("Favor Biden", "Lean Biden", "Lean Trump", "Favor Trump")) +
   labs(title = "'Super Shy Trump' Projection",
-       subtitle = "Biden X, Trump Y.",
-       caption = "In this scenario, Trump gets a 8-point polling/approval boost.\nPolling boost is a 8-point swing (Trump up 4, Biden down 4).") +
+       subtitle = "Trump 285, Biden 253.",
+       caption = "In this scenario, Trump gets a 8-point polling/approval boost.\nPolling boost is a 8-point swing (Trump up 4, Biden down 4).\nModel and graphic created by Jack Schroeder.") +
   ggsave("../Plots/final_super_shy.png")
+
+super_shy_results %>% 
+  left_join(., elec, by = "state") %>% 
+  select(state, R_pv2p, D_pv2p, winner, Guide, `2020`) %>% 
+  group_by(winner) %>% 
+  tally(`2020`)
 ```
 
-```{r fantasyworld, echo=FALSE}
+```{r fantasyworld, echo=FALSE, cache=TRUE}
 
 # A better world for Trump - zero economic growth, 25% lower unemployment, 50% approval, six point swing in polls for all states
 
@@ -623,12 +666,18 @@ fan_results %>%
   scale_fill_manual(values = c("#0000ff", "#add8e6", "#ffcccb", "#ff0000"),
                     breaks = c("Favor Biden", "Lean Biden", "Lean Trump", "Favor Trump")) +
   labs(title = "'Corona? Schmorona!' Projection",
-       subtitle = "Biden X, Trump Y.",
-       caption = "In this scenario, Trump gets a 6.5-point polling boost, a better economy, and higher approval.\nPolling boost is a 6.5-point swing (Trump up 3.5, Biden down 3.5).\nAnnual GDP growth is 0, state unemployment rates shrink by 25%, approval goes up to 50%.") +
+       subtitle = "Trump 279, Biden 259.",
+       caption = "In this scenario, Trump gets a 6.5-point polling boost, a better economy, and higher approval.\nPolling boost is a 6.5-point swing (Trump up 3.25, Biden down 3.25).\nAnnual GDP growth is 0, state unemployment rates shrink by 25%, approval goes up to 50%.\nModel and graphic created by Jack Schroeder.") +
   ggsave("../Plots/final_fan.png")
+
+fan_results %>% 
+  left_join(., elec, by = "state") %>% 
+  select(state, R_pv2p, D_pv2p, winner, Guide, `2020`) %>% 
+  group_by(winner) %>% 
+  tally(`2020`)
 ```
 
-```{r pv, echo=FALSE}
+```{r pv, echo=FALSE, cache=TRUE}
 
 # The problem here is that just going off of PV means there's room for third parties - the ghost of 1992 is a strong showing from Perot (even when )
 
@@ -719,11 +768,342 @@ pv_results %>%
   ggplot(aes(fill = Guide, state=state)) +
   geom_statebins() +
   theme_statebins() +
-  scale_fill_manual(values = c("#0000ff", "#ff0000", "#add8e6", "#ffcccb"),
-                    breaks = c("Favor Biden", "Favor Trump", "Lean Biden", "Lean Trump")) +
+  scale_fill_manual(values = c("#0000ff", "#add8e6", "#ffcccb", "#ff0000"),
+                    breaks = c("Favor Biden", "Lean Biden", "Lean Trump", "Favor Trump")) +
+  labs(title = "Alternate RF Projection",
+       subtitle = "Biden 412, Trump 126.",
+       caption = "This model performs random forest regression using unscaled popular vote totals (instead of two-party shares).\nThis model scored worse on selected evaluations.\nModel and graphic created by Jack Schroeder.") +
   ggsave("../Plots/final_pv.png")
 
-pv_mdem
-mdem
+pv_results %>% 
+  left_join(., elec, by = "state") %>% 
+  select(state, R_pv2p, D_pv2p, winner, Guide, `2020`) %>% 
+  group_by(winner) %>% 
+  tally(`2020`)
 
 ```
+
+```{r 2016 error, echo=FALSE, cache=TRUE}
+
+# If polls in swing states aren't uniformly off but instead off by specific 2016 errors.
+# Will also increase pres. approval by mean of these errors.
+# Error is a swing between both candidates.
+
+error_trump_20 <- data_20 %>% 
+  filter(party == "republican") %>% 
+  mutate(avg_support_adjusted_2 = case_when(state == "Arizona" ~ avg_support_adjusted_2 + 0.6,
+                                            state == "Colorado" ~ avg_support_adjusted_2 - 0.55,
+                                            state == "Florida" ~ avg_support_adjusted_2 + 0.85,
+                                            state == "Georgia" ~ avg_support_adjusted_2 + 0.55,
+                                            state == "Iowa" ~ avg_support_adjusted_2 + 3,
+                                            state == "Maine" ~ avg_support_adjusted_2 + 4.95,
+                                            state == "Michigan" ~ avg_support_adjusted_2 + 2.1,
+                                            state == "Minnesota" ~ avg_support_adjusted_2 + 2.2,
+                                            state == "Nevada" ~ avg_support_adjusted_2 - 0.85,
+                                            state == "New Hampshire" ~ avg_support_adjusted_2 + 1.5,
+                                            state == "New Mexico" ~ avg_support_adjusted_2 - 1.45,
+                                            state == "North Carolina" ~ avg_support_adjusted_2 + 2.2,
+                                            state == "Ohio" ~ avg_support_adjusted_2 + 3.05,
+                                            state == "Pennsylvania" ~ avg_support_adjusted_2 + 2.2,
+                                            state == "Texas" ~ avg_support_adjusted_2 + 0.25,
+                                            state == "Virginia" ~ avg_support_adjusted_2 + 0.05,
+                                            state == "Wisconsin" ~ avg_support_adjusted_2 + 3.1,
+                                            TRUE ~ avg_support_adjusted_2),
+         avg_support_adjusted_10 = case_when(state == "Arizona" ~ avg_support_adjusted_10 + 0.6,
+                                            state == "Colorado" ~ avg_support_adjusted_10 - 0.55,
+                                            state == "Florida" ~ avg_support_adjusted_10 + 0.85,
+                                            state == "Georgia" ~ avg_support_adjusted_10 + 0.55,
+                                            state == "Iowa" ~ avg_support_adjusted_10 + 3,
+                                            state == "Maine" ~ avg_support_adjusted_10 + 4.95,
+                                            state == "Michigan" ~ avg_support_adjusted_10 + 2.1,
+                                            state == "Minnesota" ~ avg_support_adjusted_10 + 2.2,
+                                            state == "Nevada" ~ avg_support_adjusted_10 - 0.85,
+                                            state == "New Hampshire" ~ avg_support_adjusted_10 + 1.5,
+                                            state == "New Mexico" ~ avg_support_adjusted_10 - 1.45,
+                                            state == "North Carolina" ~ avg_support_adjusted_10 + 2.2,
+                                            state == "Ohio" ~ avg_support_adjusted_10 + 3.05,
+                                            state == "Pennsylvania" ~ avg_support_adjusted_10 + 2.2,
+                                            state == "Texas" ~ avg_support_adjusted_10 + 0.25,
+                                            state == "Virginia" ~ avg_support_adjusted_10 + 0.05,
+                                            state == "Wisconsin" ~ avg_support_adjusted_10 + 3.1,
+                                            TRUE ~ avg_support_adjusted_10),
+         pres_app = pres_app + 2)
+
+error_trump <- as_tibble(predict(mrep, error_trump_20))
+
+error_biden_20 <- data_20 %>% 
+  filter(party == "democrat") %>% 
+  mutate(avg_support_adjusted_2 = case_when(state == "Arizona" ~ avg_support_adjusted_2 - 0.6,
+                                            state == "Colorado" ~ avg_support_adjusted_2 + 0.55,
+                                            state == "Florida" ~ avg_support_adjusted_2 - 0.85,
+                                            state == "Georgia" ~ avg_support_adjusted_2 - 0.55,
+                                            state == "Iowa" ~ avg_support_adjusted_2 - 3,
+                                            state == "Maine" ~ avg_support_adjusted_2 - 4.95,
+                                            state == "Michigan" ~ avg_support_adjusted_2 - 2.1,
+                                            state == "Minnesota" ~ avg_support_adjusted_2 - 2.2,
+                                            state == "Nevada" ~ avg_support_adjusted_2 + 0.85,
+                                            state == "New Hampshire" ~ avg_support_adjusted_2 - 1.5,
+                                            state == "New Mexico" ~ avg_support_adjusted_2 + 1.45,
+                                            state == "North Carolina" ~ avg_support_adjusted_2 - 2.2,
+                                            state == "Ohio" ~ avg_support_adjusted_2 - 3.05,
+                                            state == "Pennsylvania" ~ avg_support_adjusted_2 - 2.2,
+                                            state == "Texas" ~ avg_support_adjusted_2 - 0.25,
+                                            state == "Virginia" ~ avg_support_adjusted_2 - 0.05,
+                                            state == "Wisconsin" ~ avg_support_adjusted_2 - 3.1,
+                                            TRUE ~ avg_support_adjusted_2),
+         avg_support_adjusted_10 = case_when(state == "Arizona" ~ avg_support_adjusted_10 - 0.6,
+                                            state == "Colorado" ~ avg_support_adjusted_10 + 0.55,
+                                            state == "Florida" ~ avg_support_adjusted_10 - 0.85,
+                                            state == "Georgia" ~ avg_support_adjusted_10 - 0.55,
+                                            state == "Iowa" ~ avg_support_adjusted_10 - 3,
+                                            state == "Maine" ~ avg_support_adjusted_10 - 4.95,
+                                            state == "Michigan" ~ avg_support_adjusted_10 - 2.1,
+                                            state == "Minnesota" ~ avg_support_adjusted_10 - 2.2,
+                                            state == "Nevada" ~ avg_support_adjusted_10 + 0.85,
+                                            state == "New Hampshire" ~ avg_support_adjusted_10 - 1.5,
+                                            state == "New Mexico" ~ avg_support_adjusted_10 + 1.45,
+                                            state == "North Carolina" ~ avg_support_adjusted_10 - 2.2,
+                                            state == "Ohio" ~ avg_support_adjusted_10 - 3.05,
+                                            state == "Pennsylvania" ~ avg_support_adjusted_10 - 2.2,
+                                            state == "Texas" ~ avg_support_adjusted_10 - 0.25,
+                                            state == "Virginia" ~ avg_support_adjusted_10 - 0.05,
+                                            state == "Wisconsin" ~ avg_support_adjusted_10 - 3.1,
+                                            TRUE ~ avg_support_adjusted_10),
+         pres_app = pres_app - 2)
+
+error_biden <- as_tibble(predict(mdem, error_biden_20))
+
+error_states <- data_20 %>% 
+  group_by(state) %>% 
+  summarize(mean = mean(pres_app)) %>% 
+  select(state)
+error_states$rep <- error_trump$value
+error_states$dem <- error_biden$value
+
+error_results <- error_states %>% 
+  mutate(R_pv2p = rep/(rep+dem),
+         D_pv2p = dem/(rep+dem),
+         winner = ifelse(R_pv2p > D_pv2p, "Trump", "Biden"),
+         Guide = ifelse(R_pv2p > D_pv2p, ifelse(R_pv2p > 0.55, "Favor Trump", "Lean Trump"), ifelse(D_pv2p < 0.55, "Lean Biden", "Favor Biden")))
+
+error_results %>% 
+  ggplot(aes(fill = Guide, state=state)) +
+  geom_statebins() +
+  theme_statebins() +
+  scale_fill_manual(values = c("#0000ff", "#add8e6", "#ffcccb", "#ff0000"),
+                    breaks = c("Favor Biden", "Lean Biden", "Lean Trump", "Favor Trump")) +
+  labs(title = "'Error Trump' Projection",
+       subtitle = "Biden 319, Trump 219.",
+       caption = "In this scenario, polling errors in key states equals their errors in 2016.\nThe 2016 error is split evenly between both candidates.\nModel and graphic created by Jack Schroeder.") +
+  ggsave("../Plots/final_error.png")
+
+error_results %>% 
+  left_join(., elec, by = "state") %>% 
+  select(state, R_pv2p, D_pv2p, winner, Guide, `2020`) %>% 
+  group_by(winner) %>% 
+  tally(`2020`)
+
+```
+
+```{r incumbency, echo=FALSE, cache=TRUE}
+# Then create an incumbency model instead of a dem/rep model.
+
+# Get rid of any possible problems with outcome variables being present in data.
+
+inc_model_data <- consolidated_omit %>% 
+  select(-c(winner, pv2p, total, D, R, R_pv2p, D_pv2p, D_pv, R_pv, VEP, VAP))
+
+set.seed(07901)
+minc <- train(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag, model_data, subset = inc_model_data$incumbent_party == TRUE, method = "ranger")
+
+trump_20 <- data_20 %>% filter(party == "republican")
+inc_trump <- as_tibble(predict(minc, trump_20))
+
+set.seed(07901)
+mchal <- train(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag, model_data, subset = inc_model_data$incumbent_party == FALSE, method = "ranger")
+
+biden_20 <- data_20 %>% filter(party == "democrat")
+inc_biden <- as_tibble(predict(mchal, biden_20))
+
+inc_states <- data_20 %>% 
+  group_by(state) %>% 
+  summarize(mean = mean(pres_app)) %>% 
+  select(state)
+inc_states$rep <- inc_trump$value
+inc_states$dem <- inc_biden$value
+
+inc_results <- inc_states %>% 
+  mutate(R_pv2p = rep/(rep+dem),
+         D_pv2p = dem/(rep+dem),
+         winner = ifelse(R_pv2p > D_pv2p, "Trump", "Biden"),
+         Guide = ifelse(R_pv2p > D_pv2p, ifelse(R_pv2p > 0.55, "Favor Trump", "Lean Trump"), ifelse(D_pv2p < 0.55, "Lean Biden", "Favor Biden")))
+
+inc_results %>% 
+  ggplot(aes(fill = Guide, state=state)) +
+  geom_statebins() +
+  theme_statebins() +
+  scale_fill_manual(values = c("#0000ff", "#add8e6", "#ffcccb", "#ff0000"),
+                    breaks = c("Favor Biden", "Lean Biden", "Lean Trump", "Favor Trump")) +
+  labs(title = "2020 Election Projection",
+       subtitle = "Biden 350, Trump 188",
+       caption = "This is a random forest model based on incumbency.\nThe main model separates by party.\nModel and graphic created by Jack Schroeder.") +
+  ggsave("../Plots/final_inc.png")
+
+# EC tally
+
+inc_results %>% 
+  left_join(., elec, by = "state") %>% 
+  select(state, R_pv2p, D_pv2p, winner, Guide, `2020`) %>% 
+  group_by(winner) %>% 
+  tally(`2020`)
+```
+
+```{r unitary, echo=FALSE, cache=TRUE}
+# Then a unitary model?
+
+uni_model_data <- consolidated_omit %>% 
+  select(-c(winner, pv2p, total, D, R, R_pv2p, D_pv2p, D_pv, R_pv, VEP, VAP))
+
+set.seed(07901)
+muni <- train(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag, model_data, method = "ranger")
+
+uni_trump <- as_tibble(predict(muni, trump_20))
+uni_biden <- as_tibble(predict(muni, biden_20))
+
+uni_states <- data_20 %>% 
+  group_by(state) %>% 
+  summarize(mean = mean(pres_app)) %>% 
+  select(state)
+uni_states$rep <- uni_trump$value
+uni_states$dem <- uni_biden$value
+
+uni_results <- uni_states %>% 
+  mutate(R_pv2p = rep/(rep+dem),
+         D_pv2p = dem/(rep+dem),
+         winner = ifelse(R_pv2p > D_pv2p, "Trump", "Biden"),
+         Guide = ifelse(R_pv2p > D_pv2p, ifelse(R_pv2p > 0.55, "Favor Trump", "Lean Trump"), ifelse(D_pv2p < 0.55, "Lean Biden", "Favor Biden")))
+
+uni_results %>% 
+  ggplot(aes(fill = Guide, state=state)) +
+  geom_statebins() +
+  theme_statebins() +
+  scale_fill_manual(values = c("#0000ff", "#add8e6", "#ffcccb", "#ff0000"),
+                    breaks = c("Favor Biden", "Lean Biden", "Lean Trump", "Favor Trump")) +
+  labs(title = "2020 Election Projection",
+       subtitle = "Biden 350, Trump 188",
+       caption = "This is a random forest model based on incumbency.\nThe main model separates by party.\nModel and graphic created by Jack Schroeder.") +
+  ggsave("../Plots/final_uni.png")
+
+# EC tally
+
+uni_results %>% 
+  left_join(., elec, by = "state") %>% 
+  select(state, R_pv2p, D_pv2p, winner, Guide, `2020`) %>% 
+  group_by(winner) %>% 
+  tally(`2020`)
+
+muni$bestTune
+muni$yLimits
+mdem$yLimits
+mrep$yLimits
+mdem$bestTune
+mdem$results
+
+muni_rf <- randomForest(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag, model_data)
+
+pred_muni <- predict(muni_rf, biden_20, predict.all=TRUE)
+```
+
+```{r votes, echo=FALSE, cache=TRUE}
+
+raw_model_data <- consolidated_omit %>% 
+  select(-c(winner, pv2p, total, R_pv2p, D_pv2p, D_pv, R_pv, VAP))
+
+set.seed(07901)
+raw_mrep <- train(R ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag + VEP, raw_model_data, subset = raw_model_data$party == "republican", method = "ranger")
+
+raw_mrep
+
+raw_trump <- as_tibble(predict(raw_mrep, trump_20))
+
+set.seed(07901)
+raw_mdem <- train(D ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag + VEP, raw_model_data, subset = raw_model_data$party == "democrat", method = "ranger")
+
+raw_biden <- as_tibble(predict(raw_mdem, biden_20))
+
+raw_states <- data_20 %>% 
+  group_by(state) %>% 
+  summarize(mean = mean(pres_app)) %>% 
+  select(state)
+raw_states$rep <- raw_trump$value
+raw_states$dem <- raw_biden$value
+
+raw_results <- raw_states %>% 
+  mutate(R_pv2p = rep/(rep+dem),
+         D_pv2p = dem/(rep+dem),
+         winner = ifelse(R_pv2p > D_pv2p, "Trump", "Biden"),
+         Guide = ifelse(R_pv2p > D_pv2p, ifelse(R_pv2p > 0.55, "Favor Trump", "Lean Trump"), ifelse(D_pv2p < 0.55, "Lean Biden", "Favor Biden")))
+
+raw_results %>% 
+  ggplot(aes(fill = Guide, state=state)) +
+  geom_statebins() +
+  theme_statebins() +
+  scale_fill_manual(values = c("#0000ff", "#add8e6", "#ffcccb", "#ff0000"),
+                    breaks = c("Favor Biden", "Lean Biden", "Lean Trump", "Favor Trump")) +
+  labs(title = "2020 Election Projection (Raw)",
+       subtitle = "Biden 334, Trump 204.",
+       caption = "The underlying model is a random forest regression that includes various economic/polling indicators.\nRandom forests utilize decision trees with some predictors on some of the data to avoid overfitting.\nThe best of these trees are used together to predict future outcomes.\nModel and graphic created by Jack Schroeder.") +
+  ggsave("../Plots/final_raw.png")
+
+# EC tally
+
+results %>% 
+  left_join(., elec, by = "state") %>% 
+  select(state, R_pv2p, D_pv2p, winner, Guide, `2020`) %>% 
+  group_by(winner) %>% 
+  tally(`2020`)
+
+raw_mdem
+raw_mrep
+```
+
+
+```{r}
+# Model comps
+`wOriginal Model` <- round(rmse_final_model, 3)
+`wFinal Model (R)` <- 3.138
+`wFinal Model (D)` <- 2.909
+`wRF PV (D)` <- 2.908
+`wRF PV (R)` <- 2.804
+`wIncumbent (R)` <- 3.222
+`wIncumbent (D)` <- 3.407
+`wUnitary RF` <- 3.101
+`w Raw (R)` <- 1.14
+`w Raw (D)` <- 2.14
+                          
+
+raw_rmse <- data.frame(Model = "Raw Votes (R)", RMSE = "177k votes")
+raw_rmse2 <- data.frame(Model = "Raw Votes (D)", RMSE = "208k votes")
+
+rmse_tbl <- data.frame(`wOriginal Model`, `wFinal Model (R)`, `wFinal Model (D)`, `wRF PV (D)`, `wRF PV (R)`, `wIncumbent (R)`, `wIncumbent (D)`, `wUnitary RF`) %>% 
+  pivot_longer(cols = starts_with("w"),
+    names_to = "Model",
+               values_to = "RMSE") %>% 
+  mutate(Model = case_when(Model == "wOriginal.Model" ~ "Original",
+                           Model == "wFinal.Model..R." ~ "Final (R)",
+                           Model == "wFinal.Model..D." ~ "Final (D)",
+                           Model == "wRF.PV..D." ~ "Unscaled (R)",
+                           Model == "wRF.PV..R." ~ "Unscaled (D)",
+                           Model == "wIncumbent..R." ~ "Incumbent (R)",
+                           Model == "wIncumbent..D." ~ "Incumbent (D)",
+                           Model == "wUnitary.RF" ~ "Unitary")) %>% 
+  rbind(., raw_rmse) %>% 
+  rbind(., raw_rmse2) %>% 
+  gt() %>% 
+  tab_header(title = "RMSE of Election Models",
+             subtitle = "Final Models Balance RMSE and Interpretability") %>% 
+  tab_source_note(source_note = c("RMSE in % points of state vote totals unless noted.", "Models and graphic created by Jack Schroeder.")) %>% 
+  gtsave("../Plots/rmse.png")
+
+```
+
