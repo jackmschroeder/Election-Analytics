@@ -523,11 +523,12 @@ support_days %>%
   ggplot(aes(x=days_to, y=undecided)) +
   geom_point() +
   geom_smooth() +
+  theme_bw() +
   labs(x = "Days to Election",
        y = "Undecided Voters (in Polling Averages)",
        title = "Number of Undecided Poll Respondents Decreases as Election Nears",
        subtitle = "Sharp decrease in last few weeks of campaigning.",
-       caption = "Undecideds are voters unaligned to major-party candidates.\nThis metric is calculated for every state/national poll since 1968 for every day until election.\n1992 excluded due to substantial third-party support.") +
+       caption = "Undecideds are voters unaligned to major-party candidates.\nThis metric is calculated for every state/national poll since 1968 for every day until election.\n1992 excluded due to substantial third-party support.\nGraphic created by Jack Schroeder.") +
   ggsave("../Plots/undecided.png",
          width=8,
          height=5)
