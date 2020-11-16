@@ -405,6 +405,8 @@ trump <- as_tibble(predict(mrep, trump_20))
 set.seed(07901)
 mdem <- train(my_pv2p ~ avg_support_adjusted_2 + avg_support_adjusted_10 + my_pv2p_lag + pres_app + incumbent_party + GDP_growth_a + unemployment_loc_a + my_us_pv2p_lag, model_data, subset = model_data$party == "democrat", method = "ranger")
 
+mdem
+
 biden_20 <- data_20 %>% filter(party == "democrat")
 biden <- as_tibble(predict(mdem, biden_20))
 
@@ -1145,4 +1147,75 @@ rmse_tbl <- data.frame(`wOriginal Model`, `wFinal Model (R)`, `wFinal Model (D)`
   gtsave("../Plots/rmse.png")
 
 ```
+
+```{r reflection, echo=FALSE}
+
+# States wrong
+# How off in EC votes
+
+# Yanxi polling/econ data being off
+
+# Method, RMSE, NY
+
+results_20 <- read_csv("../Data/StateResults2020.csv", col_types = cols(`Kanye West` = col_double(), `Joseph R. Biden Jr.` = col_double(), `Donald J. Trump` = col_double())) %>% 
+  filter(!is.na(`Donald J. Trump`)) %>% 
+  rename(R_votes = `Donald J. Trump`,
+         D_votes = `Joseph R. Biden Jr.`,
+         kanye = `Kanye West`,
+         state = `Geographic Name`) %>% 
+  mutate(R_pv2p_20 = round(100 * R_votes/(R_votes + D_votes), 1),
+         D_pv2p_20 = round(100 * D_votes/(R_votes + D_votes), 1),
+         K_pv3p_20 = round(100 * kanye/(kanye + R_votes + D_votes), 1),
+         winner_actual = case_when(R_pv2p_20 > 50 ~ "Trump",
+                            TRUE ~ "Biden")) %>% 
+  select(state, R_pv2p_20, D_pv2p_20, K_pv3p_20, kanye, R_votes, D_votes, winner_actual) %>% 
+  left_join(., pv2p_results, by = "state") %>% 
+  mutate(input = (R_pv2p_20 - R_pv2p)^2,
+         simple = R_pv2p_20 - R_pv2p,
+         sqrt = sqrt(input),
+         winner_predicted = case_when(R_pv2p > 50 ~ "Trump",
+                            TRUE ~ "Biden"),
+         wrong = case_when(winner_actual == winner_predicted ~ "Correct",
+                           TRUE ~ "Wrong"))
+
+rmse_20 <- results_20 %>%
+  summarize(rmse = sqrt(mean(input))) %>% 
+  pull()
+
+rmse_20_ny <- results_20 %>% 
+  filter(state != "New York") %>% 
+  summarize(rmse = sqrt(mean(input))) %>% 
+  pull()
+
+ggplot(results_20, aes(fill = sqrt, state = state)) +
+  geom_statebins() +
+  theme_statebins() +
+  labs(title = "Random Forest Model Error by State",
+       subtitle = "Error not geographically consolidated.",
+       caption = "New York has yet to report over 90% of ballots.\nModel and graphic created by Jack Schroeder.",
+       fill = "Error") +
+  ggsave("../Plots/errormap20.png")
+
+results_20 %>% 
+  filter(kanye>0) %>% 
+  rename(Trump = R_votes,
+         Biden = D_votes) %>% 
+  pivot_longer(Trump:Biden, names_to = "party", values_to = "votes") %>% 
+  ggplot(aes(x=votes, y=kanye)) +
+  geom_point(color="#c8793c") +
+  geom_smooth(method="lm", se=FALSE, color="#1504f8") +
+  facet_wrap(~party) +
+  labs(x = "Main Candidate Votes",
+       y = "Kanye West Votes",
+       title = "Kanye West Votes Significantly Correlated with Trump Votes",
+       caption = "Trump regression: P-value 0.0007, R-squared 0.60.\nBiden regression: P-value 0.42, R-squared 0.05.") +
+  theme_bw() +
+  ggsave("../Plots/kanye.png",
+         width = 7,
+         height = 5)
+
+# summary(lm(kanye ~ D_votes, results_20, subset = kanye>0))
+summary(lm(simple ~ D_votes, results_20))
+
+ ```
 
