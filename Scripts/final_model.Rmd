@@ -1108,8 +1108,7 @@ raw_mdem
 raw_mrep
 ```
 
-
-```{r}
+```{r comps, echo=FALSE}
 # Model comps
 `wOriginal Model` <- round(rmse_final_model, 3)
 `wFinal Model (R)` <- 3.138
@@ -1157,7 +1156,22 @@ rmse_tbl <- data.frame(`wOriginal Model`, `wFinal Model (R)`, `wFinal Model (D)`
 
 # Method, RMSE, NY
 
-results_20 <- read_csv("../Data/StateResults2020.csv", col_types = cols(`Kanye West` = col_double(), `Joseph R. Biden Jr.` = col_double(), `Donald J. Trump` = col_double())) %>% 
+results_20 <- read_csv("../Data/popvote_bystate_1948-2020.csv") %>% 
+  filter(year == 2020) %>% 
+  mutate(R_pv2p = round(R_pv2p * 100, 1),
+         D_pv2p = round(D_pv2p * 100, 1),
+         winner_actual = case_when(R_pv2p > 50 ~ "Trump",
+                                   TRUE ~ "Biden")) %>% 
+  left_join(., pv2p_results, by = "state", suffix = c("_actual", "_predicted")) %>% 
+  mutate(winner_predicted = case_when(R_pv2p_predicted > 50 ~ "Trump",
+                            TRUE ~ "Biden"),
+         input = (R_pv2p_actual - R_pv2p_predicted)^2,
+         simple = R_pv2p_actual - R_pv2p_predicted,
+         sqrt = sqrt(input),
+         wrong = case_when(winner_actual == winner_predicted ~ "Correct",
+                           TRUE ~ "Wrong"))
+
+results_20_k <- read_csv("../Data/StateResults2020.csv", col_types = cols(`Kanye West` = col_double(), `Joseph R. Biden Jr.` = col_double(), `Donald J. Trump` = col_double())) %>% 
   filter(!is.na(`Donald J. Trump`)) %>% 
   rename(R_votes = `Donald J. Trump`,
          D_votes = `Joseph R. Biden Jr.`,
@@ -1196,7 +1210,7 @@ ggplot(results_20, aes(fill = sqrt, state = state)) +
        fill = "Error") +
   ggsave("../Plots/errormap20.png")
 
-results_20 %>% 
+results_20_k %>% 
   filter(kanye>0) %>% 
   rename(Trump = R_votes,
          Biden = D_votes) %>% 
@@ -1215,7 +1229,6 @@ results_20 %>%
          height = 5)
 
 # summary(lm(kanye ~ D_votes, results_20, subset = kanye>0))
-summary(lm(simple ~ D_votes, results_20))
+summary(lm(simple ~ D_votes, results_20_k))
 
- ```
-
+```
