@@ -94,7 +94,7 @@ Three implications here:
 
 That doesn’t mean the fundamental variables are unimportant. In fact, the economic indicators in particular inspire two more hypotheses:
 
-$H_3$: *Economic variables underestimated Trump support because across the board, voters didn’t “blame” him for the economic crisis. This assumes that voters held largely similar views on the economy that, if measured, could have reduced the underestimate.*
+H<sub>1<sub>: *Economic variables underestimated Trump support because across the board, voters didn’t “blame” him for the economic crisis. This assumes that voters held largely similar views on the economy that, if measured, could have reduced the underestimate.*
 
 *H_4: Economic variables underestimated Trump support because in red states, voters didn’t “blame” him for the economic crisis.” This assumes that Trump’s supporters were likelier to give him a pass on the economy. The distinction here is crucial because of the model’s aforementioned undercounting of Trump support in deep red states. 
 
