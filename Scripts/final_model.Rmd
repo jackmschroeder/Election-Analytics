@@ -1348,7 +1348,7 @@ correlates %>%
          indicator != "unemployment_loc_a") %>% 
   ggplot(aes(x=pestimate, y=R_pv2p_20)) +
   geom_point() +
-  geom_smooth(method="lm", se = FALSE, alpha=0.5) +
+  geom_smooth(se = FALSE, alpha=0.5) +
   geom_abline(slope=1, intercept=0, color="salmon") +
   facet_wrap(~indicator) +
   labs(x = "Predicted Trump Voteshare",
