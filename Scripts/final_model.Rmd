@@ -450,8 +450,8 @@ pv2p_results <- results %>%
 
 pv2p_results %>% 
   filter(abs(R_pv2p - D_pv2p) < 6.04) %>% 
-  arrange(desc(D_pv2p)) %>% 
-  tally(`2020`)
+  arrange(desc(D_pv2p))#%>% 
+  #tally(`2020`)
 
 ```
 
@@ -1356,5 +1356,7 @@ correlates %>%
   ggsave("../Plots/correlates.png",
          height = 5,
          width = 7)
+
+mdem
 
 ```

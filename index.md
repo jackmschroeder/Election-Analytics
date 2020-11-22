@@ -19,3 +19,5 @@ Hello! I am a senior at Harvard studying Government and Data Science, with a sec
 ## [Week 7: Shocks and Covid-19 (10.24.20)](Posts/week7.md)
 
 ## [Final Prediction (11.1.20)](Posts/final.md)
+
+## [Post-Election Reflection (11.22.20)](Posts/reflection.md)
