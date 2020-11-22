@@ -48,11 +48,15 @@ Intuitively, this makes sense. There were many polling skeptics this year who be
 
 Needless to say, there is a lot to unpack from this election. What I want to do from here is offer some hypotheses as to where and why my model was wrong and propose or conduct tests to evaluate those beliefs.
 
-Two simple hypotheses arose from looking at prediction error:
+Two hypotheses arose from looking at prediction error:
 
-H1: *Model error was geographically distributed, with higher error in the Southeast.*
+H1: *Disparities in political geography led model error to be geographically distributed, with higher error in the Southeast.*
 
-H2: *Model error was ideologically distributed, with higher error for redder states.*
+Certain predictors may have had geographic quirks that resulted in bad predictions. For instance, pollsters may have systematically undercounted certain voters in Midwestern states or misjudged demographic intentions in the Southeast.
+
+H2: *Increases in polarization led model error to be ideologically distributed, with higher error for redder states.*
+
+It may be the case that the country is getting more polarized, with red states trending redder and blue states trending bluer. The model may not have been able to account for this if the trend increased since 2016.
 
 Both of these hypotheses can be initially tested through visuals.
 
@@ -76,7 +80,7 @@ Based on the graphic, H2 appears to have merit. The average predicted Republican
 
 However, this doesn’t fully answer the question, since the visualization doesn’t convey how red and blue these states were. I’d want to dive deeper by analyzing state “stickiness” - how often it votes for the same party - and see whether that is correlated with prediction error. If that’s the case, I could also run regressions here to account for other factors. My guess is consistent with H2: sticky red (and, to a lesser extent, sticky blue) states likely have higher prediction error.
 
-This may be a symptom of increased polarization on the state-level, as red states go redder and blue states go bluer. This fits with Rodden (2019), who shows how Democratic voters are inefficiently distributed across states, so there are more red states than blue. Due to this imbalance in political geography, this would likely result in the average state (and potentially the tipping-point in Electoral College votes) trending redder than the nation.
+From a preliminary judgement of both hypotheses, it seems that H2 is stronger. However, H1’s focus on political geography may strengthen H2 going forward. Rodden (2019) notes how changes in political geography - specifically urban/rural divides - augment polarization and result in the inefficient distribution of Democratic voters across states, leading there to be more red states than blue. Due to this imbalance in political geography, this would result in the average state (and the Electoral College tipping point) trending redder than the nation as a whole.
 
 ### Predictor Hypotheses
 
@@ -127,9 +131,22 @@ That brings us to polling.
 Polling more specifically - steady then shift
 ![Polling Avg Error](../Plots/pollavg.png)
 
-### Takeaways/Room for Improvement
+### Takeaways
 
-ME and NE
-Less of a black box
-More historical backtesting - explicitly conduct leave one out to better account for out of sample
-More predictors - especially ones that vary by state
+I have a few conclusions from this whole process and how I’d change the model for future elections:
+
+(1) Random forests can be black boxes. I used the `caret` library in R, which was easy to use but harder to strictly evaluate. I think it was serviceable for this election (it gave me good summary statistics), but in the future I’d be willing to work harder on coding the model if it meant I could see more of what was happening under the hood and make changes as needed.
+
+(2) The model didn’t predict Maine and Nebraska’s congressional districts separately because of a lack of reliable historical data. That is tougher to fix, but in the future I’ll try harder to include them. If the trend of close elections continue, they could become pivotal.
+
+(3) I can conduct more historical backtesting in the future. One part of this would be explicitly conducting leave-one-out cross validation to make sure the model’s random sampling of data are corresponding to out-of-sample accuracy.
+
+(4) If I wanted to devote more attention to the model, I could be much more rigorous about the polling inputs. Instead of relying on FiveThirtyEight adjusted averages, I could switch to RealClearPolitics (a much simpler average) or create my own with raw polling data. While there are definitely concerns about reputability of certain pollsters - and those will only increase as pollsters attempt to adjust for the next election - a simple average helps guard against groupthink. Testing simple versus adjusted averages would be crucial here.
+
+(5) Random forest models are very useful when there are a bunch of predictors. Eight was enough for me to be satisfied with the model, but it is much stronger when there are many more. Keeping in mind potential correlations between predictors, I want to find more variables to include for the next cycle (like economic opinion polling and partisan lean).
+
+(6) There are a few pie-in-the-sky changes that could be made: weighing polls based on historical accuracy or time until election, incorporating betting market data, transitioning to a probabilistic model that randomly samples turnout, or creating an ensemble model that includes random forest and other techniques.
+
+### Conclusion
+
+TL;DR - The model surprisingly performed better than expected, but there’s definitely room for improvement going forward. Ultimately, 2020 is shaping up to be a more complex election than 2016, but I’ve hopefully set the groundwork to help explain what analysts got wrong.

@@ -421,7 +421,7 @@ results <- states %>%
   mutate(R_pv2p = rep/(rep+dem),
          D_pv2p = dem/(rep+dem),
          winner = ifelse(R_pv2p > D_pv2p, "Trump", "Biden"),
-         Guide = ifelse(R_pv2p > D_pv2p, ifelse(R_pv2p > 0.55, "Favor Trump", "Lean Trump"), ifelse(D_pv2p < 0.55, "Lean Biden", "Favor Biden")))
+         Guide = ifelse(R_pv2p > D_pv2p, ifelse(abs(R_pv2p - D_pv2p) > .0604, "Favor Trump", "Lean Trump"), ifelse(abs(D_pv2p - R_pv2p) < .0604, "Lean Biden", "Favor Biden")))
 
 results %>% 
   ggplot(aes(fill = Guide, state=state)) +
@@ -431,7 +431,7 @@ results %>%
                     breaks = c("Favor Biden", "Lean Biden", "Lean Trump", "Favor Trump")) +
   labs(title = "2020 Election Projection",
        subtitle = "Biden 334, Trump 204.",
-       caption = "The underlying model is a random forest regression that includes various economic/polling indicators.\nRandom forests utilize decision trees with some predictors on some of the data to avoid overfitting.\nThe best of these trees are used together to predict future outcomes.\nModel and graphic created by Jack Schroeder.") +
+       caption = "The underlying model is a random forest regression that includes various economic/polling indicators.\n'Lean' states are within the model's combined historical RMSE.\nModel and graphic created by Jack Schroeder.") +
   ggsave("../Plots/final_pv2p.png")
 
 # EC tally
