@@ -1147,7 +1147,7 @@ rmse_tbl <- data.frame(`wOriginal Model`, `wFinal Model (R)`, `wFinal Model (D)`
 
 ```
 
-```{r reflection, echo=FALSE}
+```{r reflection, echo=FALSE, message=FALSE}
 
 # States wrong
 # How off in EC votes
@@ -1156,18 +1156,24 @@ rmse_tbl <- data.frame(`wOriginal Model`, `wFinal Model (R)`, `wFinal Model (D)`
 
 # Method, RMSE, NY
 
-results_20 <- read_csv("../Data/popvote_bystate_1948-2020.csv") %>% 
-  filter(year == 2020) %>% 
-  mutate(R_pv2p = round(R_pv2p * 100, 1),
-         D_pv2p = round(D_pv2p * 100, 1),
-         winner_actual = case_when(R_pv2p > 50 ~ "Trump",
-                                   TRUE ~ "Biden")) %>% 
-  left_join(., pv2p_results, by = "state", suffix = c("_actual", "_predicted")) %>% 
-  mutate(winner_predicted = case_when(R_pv2p_predicted > 50 ~ "Trump",
-                            TRUE ~ "Biden"),
-         input = (R_pv2p_actual - R_pv2p_predicted)^2,
-         simple = R_pv2p_actual - R_pv2p_predicted,
+results_20 <- read_csv("../Data/StateResults2020.csv", col_types = cols(`Kanye West` = col_double(), `Joseph R. Biden Jr.` = col_double(), `Donald J. Trump` = col_double())) %>% 
+  filter(!is.na(`Donald J. Trump`)) %>% 
+  rename(R_votes = `Donald J. Trump`,
+         D_votes = `Joseph R. Biden Jr.`,
+         state = `Geographic Name`) %>% 
+  mutate(R_pv2p_20 = round(100 * R_votes/(R_votes + D_votes), 1),
+         D_pv2p_20 = round(100 * D_votes/(R_votes + D_votes), 1),
+         winner_actual = case_when(R_pv2p_20 > 50 ~ "Trump",
+                            TRUE ~ "Biden")) %>% 
+  select(state, R_pv2p_20, D_pv2p_20, R_votes, D_votes, winner_actual) 
+
+results_20_f <- results_20 %>% 
+  left_join(., pv2p_results, by = "state") %>% 
+  mutate(input = (R_pv2p_20 - R_pv2p)^2,
+         simple = R_pv2p_20 - R_pv2p,
          sqrt = sqrt(input),
+         winner_predicted = case_when(R_pv2p > 50 ~ "Trump",
+                            TRUE ~ "Biden"),
          wrong = case_when(winner_actual == winner_predicted ~ "Correct",
                            TRUE ~ "Wrong"))
 
@@ -1192,16 +1198,39 @@ results_20_k <- read_csv("../Data/StateResults2020.csv", col_types = cols(`Kanye
          wrong = case_when(winner_actual == winner_predicted ~ "Correct",
                            TRUE ~ "Wrong"))
 
-rmse_20 <- results_20 %>%
+rmse_20 <- results_20_f %>%
   summarize(rmse = sqrt(mean(input))) %>% 
   pull()
 
-rmse_20_ny <- results_20 %>% 
+rmse_20_ny <- results_20_f %>% 
   filter(state != "New York") %>% 
   summarize(rmse = sqrt(mean(input))) %>% 
   pull()
 
-ggplot(results_20, aes(fill = sqrt, state = state)) +
+results_20_e <- error_results %>% 
+  mutate(R_pv2p = round(R_pv2p * 100, 1),
+         D_pv2p = round(D_pv2p * 100, 1)) %>% 
+  select(state, R_pv2p, D_pv2p, winner) %>% 
+  rename(winner_predicted = winner) %>% 
+  left_join(., results_20, by = "state") %>% 
+  mutate(input = (R_pv2p_20 - R_pv2p)^2,
+         simple = R_pv2p_20 - R_pv2p,
+         sqrt = sqrt(input),
+         winner_predicted = case_when(R_pv2p > 50 ~ "Trump",
+                            TRUE ~ "Biden"),
+         wrong = case_when(winner_actual == winner_predicted ~ "Correct",
+                           TRUE ~ "Wrong"))
+
+rmse_20_e <- results_20_e %>%
+  summarize(rmse = sqrt(mean(input))) %>% 
+  pull()
+
+rmse_20_e_ny <- results_20_e %>%
+  filter(state != "New York") %>% 
+  summarize(rmse = sqrt(mean(input))) %>% 
+  pull()
+
+ggplot(results_20_f, aes(fill = sqrt, state = state)) +
   geom_statebins() +
   theme_statebins() +
   labs(title = "Random Forest Model Error by State",
@@ -1228,7 +1257,104 @@ results_20_k %>%
          width = 7,
          height = 5)
 
-# summary(lm(kanye ~ D_votes, results_20, subset = kanye>0))
-summary(lm(simple ~ D_votes, results_20_k))
+# summary(lm(kanye ~ D_votes, results_20_k, subset = kanye>0))
+# summary(lm(simple ~ D_votes, results_20_k))
+
+results_20_f %>% 
+  filter(state != "District of Columbia") %>% 
+  ggplot(aes(x=R_pv2p, y=R_pv2p_20, size=`2020`)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color="darkgreen") +
+  #geom_smooth(se = FALSE, method="lm") +
+  labs(x = "Predicted Trump Two-Party Voteshare",
+       y = "Actual Trump Two-Party Voteshare",
+       title = "Model Underestimated Trump in All but 7 States & DC",
+       #subtitle = "Error increases with Trump support",
+       caption = "DC omitted from graphic.\nModel and graphic created by Jack Schroeder.",
+       size = "EC Votes") +
+  theme_bw() +
+  ggsave("../Plots/simpleerror.png",
+         height=5,
+         width=7)
+
+results_20_f %>% 
+  #filter(state != "New York") %>% 
+  ggplot(aes(x=winner_predicted, y=simple)) +
+  geom_boxplot(outlier.shape = NA) +
+# Size should equal confidence
+  geom_abline(slope = 0, intercept = 0, color = "black", alpha = 0.5) +
+  geom_jitter(width=0.15, aes(color = winner_actual, size=`2020`)) +
+  labs(x = "Predicted Winner",
+       y = "Prediction Error",
+       color = "Actual Winner",
+       size = "Electoral Votes",
+       caption = "Positive error means model underestimated Trump.\nColor denotes acutal winner.\nModel and graphic created by Jack Schroeder.",
+       title = "Model Underestimated Trump Support in Blue and Red States",
+       subtitle = "RF model only overestimated Trump support in 7 states + DC") +
+  scale_color_manual(values = c("dodgerblue", "salmon"),
+                    breaks = c("Biden", "Trump")) +
+  theme_bw() +
+  ggsave("../Plots/boxplot.png",
+         height=5,
+         width=7)
+
+polls_error <- data_20 %>% 
+  filter(party == "republican",
+         state != "District of Columbia") %>% 
+  left_join(., results_20) %>% 
+  select(state, avg_support_adjusted_2, avg_support_adjusted_10, R_pv2p_20, winner_actual) %>% 
+  rename(`Poll Avg.\n(>2 Weeks)` = avg_support_adjusted_10,
+         `Poll Avg.\n(<2 Weeks)` = avg_support_adjusted_2,
+         `Actual\nResults` = R_pv2p_20) %>% 
+  mutate(error = `Actual\nResults` - `Poll Avg.\n(<2 Weeks)`,
+         errorfive = ifelse(error >= 5, 1, 0)) %>% 
+  pivot_longer(`Poll Avg.\n(<2 Weeks)`:`Actual\nResults`, names_to = "indicator", values_to = "pestimate") %>% 
+  mutate(indicator = fct_relevel(indicator, "Poll Avg.\n(>2 Weeks)", "Poll Avg.\n(<2 Weeks)", "Actual\nResults"),
+         pestimate_50 = ifelse(pestimate > 50, "Trump", "Biden"))
+
+polls_error %>% 
+  ggplot(aes(x=indicator, y=pestimate, group=state, color=pestimate_50)) +
+  geom_line(alpha=0.5) +
+  geom_point() +
+  scale_color_manual(values = c("dodgerblue", "salmon"),
+                    breaks = c("Biden", "Trump")) +
+  geom_abline(slope=0, intercept=50, alpha=0.5) +
+  facet_wrap(~winner_actual) +
+  labs(x = "",
+       y = "Trump Voteshare",
+       title = "Polling Averages Underestimated Trump",
+       subtitle = "Averages were fairly steady pre-election, actual results shifted red",
+       color = "Leader",
+       caption = "Polling averages from FiveThirtyEight.\n>2 week averages extend up to 10 weeks pre-election.\nModel and graphic created by Jack Schroeder.") +
+  theme_bw() +
+  ggsave("../Plots/pollavg.png")
+
+correlates <- data_20 %>% 
+  filter(party == "republican") %>% 
+  left_join(., results_20, by = "state") %>% 
+  #mutate(my_pv2p_20 = ifelse(party == "republican", R_pv2p_20, D_pv2p_20)) %>% 
+  select(state, party, R_pv2p_20, my_pv2p_lag, avg_support_adjusted_10, avg_support_adjusted_2, unemployment_loc_a) %>%
+  rename(`Poll Avg.\n(>2 Weeks)` = avg_support_adjusted_10,
+         `Poll Avg.\n(<2 Weeks)` = avg_support_adjusted_2,
+         `2016 Results` = my_pv2p_lag) %>% 
+  pivot_longer(`2016 Results`:`Poll Avg.\n(<2 Weeks)`, names_to = "indicator", values_to = "pestimate")
+
+correlates %>% 
+  filter(state != "District of Columbia",
+         indicator != "unemployment_loc_a") %>% 
+  ggplot(aes(x=pestimate, y=R_pv2p_20)) +
+  geom_point() +
+  geom_smooth(method="lm", se = FALSE, alpha=0.5) +
+  geom_abline(slope=1, intercept=0, color="salmon") +
+  facet_wrap(~indicator) +
+  labs(x = "Predicted Trump Voteshare",
+       y = "Actual Trump Voteshare",
+       title = "Lagged Voteshare Overestimated Trump Support",
+       subtitle = "But polling underestimated Trump support by wider margins",
+       caption = "Polling averages from FiveThirtyEight.\n>2 week averages extend up to 10 weeks pre-election.\nModel and graphic created by Jack Schroeder.") +
+  theme_bw() +
+  ggsave("../Plots/correlates.png",
+         height = 5,
+         width = 7)
 
 ```
