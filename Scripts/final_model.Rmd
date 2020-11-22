@@ -1264,14 +1264,14 @@ results_20_f %>%
   filter(state != "District of Columbia") %>% 
   ggplot(aes(x=R_pv2p, y=R_pv2p_20, size=`2020`)) +
   geom_point() +
-  geom_abline(slope = 1, intercept = 0, color="darkgreen") +
-  #geom_smooth(se = FALSE, method="lm") +
+  geom_abline(slope = 1, intercept = 0, color="salmon") +
   labs(x = "Predicted Trump Two-Party Voteshare",
        y = "Actual Trump Two-Party Voteshare",
-       title = "Model Underestimated Trump in All but 7 States & DC",
-       #subtitle = "Error increases with Trump support",
+       title = "Random Forest Model Error",
+       subtitle = "Error increases with predicted Trump support",
        caption = "DC omitted from graphic.\nModel and graphic created by Jack Schroeder.",
        size = "EC Votes") +
+  geom_smooth(se = FALSE) +
   theme_bw() +
   ggsave("../Plots/simpleerror.png",
          height=5,
