@@ -1289,7 +1289,7 @@ results_20_f %>%
        color = "Actual Winner",
        size = "Electoral Votes",
        caption = "Positive error means model underestimated Trump.\nColor denotes acutal winner.\nModel and graphic created by Jack Schroeder.",
-       title = "Model Underestimated Trump Support in Blue and Red States",
+       title = "Model Missed Trump Support More in Predicted Red States",
        subtitle = "RF model only overestimated Trump support in 7 states + DC") +
   scale_color_manual(values = c("dodgerblue", "salmon"),
                     breaks = c("Biden", "Trump")) +
