@@ -1327,7 +1327,7 @@ polls_error %>%
   labs(x = "",
        y = "Trump Voteshare",
        title = "Polling Averages Underestimated Trump",
-       subtitle = "Averages were fairly steady pre-election, actual results shifted red",
+       subtitle = "Averages were fairly steady pre-election, but actual results shifted red",
        color = "Leader",
        caption = "Polling averages from FiveThirtyEight.\n>2 week averages extend up to 10 weeks pre-election.\nModel and graphic created by Jack Schroeder.") +
   theme_bw() +
