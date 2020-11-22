@@ -476,10 +476,14 @@ importance <- cbind(imp_rep, imp_dem) %>%
   pivot_longer(!value, names_to = "model",
               values_to = "importance")
 
-
+imp_rep <- importance %>% 
+  filter(model == "Republican") %>% 
+  mutate(importance = scales::rescale(importance))
 
 importance %>% 
+  filter(model == "Democrat") %>% 
   mutate(importance = scales::rescale(importance)) %>% 
+  rbind(., imp_rep) %>% 
   ggplot(aes(y=value, x=importance, color=model)) +
   geom_point() +
   theme_bw() +
