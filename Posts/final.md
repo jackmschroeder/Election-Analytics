@@ -1,187 +1,141 @@
-## Post-Election Reflection (11.22.20)
+## Final Prediction (11.1.20)
 
 ### A Primer
 
-Now that the 2020 election is (mostly) behind us, it’s time to evaluate my model and its components. In this post, I’ll be answering the following questions:
+The election is days away, and the time has come to unveil my final model. This was an intensive process - many iterations of data wrangling, models, graphics, scenarios, etc. I had a few questions in mind going into this final exercise:
 
-(1) What exactly was my model, again, and how did it do? (The random forest regression performed better than expected, but still room for improvement!)
+(1) Who will win the election? (Likely Biden.)
 
-(2) Is there anything to learn from my alternate specifications? (Previous error is worth considering, but take it with a grain of salt.)
+(2) Can I create a model similar to the binomial logit used in class? (Not a good one.)
 
-(3) Where did my predictions/predictors go wrong, and can I quantitatively test these beliefs? (I have some theories that may be testable.)
+(3) Is there another way for me to model without resorting to simple linear regression? (Yes.)
 
-With that in mind, let’s proceed to a quick model recap:
+(4) Do I have faith in this model? (Yes.)
 
-### Model Recap
+(5) Are there other scenarios I can use to test my assumptions? (A bunch.)
 
-My final model was a random forest regression predicting each party’s two-party voteshare in each state.
+With that in mind, I’ll outline how I got to my model, detail that model, give my prediction, and go through a few alternate scenarios.
 
-**What is a random forest?** It is a regression/classification technique based on decision trees (think: flowcharts). A single decision tree is prone to overfitting the sample data and inaccurately predicting future outcomes. Random forests try to avoid these issues by forming many trees, each with a random sample of the data and only a handful of the predictors. The model averages each tree’s prediction and spits out a final point estimate. Each party had its own model, which predicted a two-party voteshare estimate for each state. I took the predicted voteshare for each party in each state to get a final two-party voteshare estimates.
+### Initial Attempts
 
-**What did I feed into the model?** Throughout class, we worked with many different sources of data. I ended up with eight predictors: polls (two-week and ten-week state polling averages), fundamentals (annual national GDP growth, annual local state unemployment, presidential approval, and a dummy variable for incumbent party), and lagged variables (2016 national and state voteshares). Since each tree had a random sample of data, each variable had to have complete data. This kept me from using data pre-1980.
+[Earlier this fall](../Posts/week5.md), I tried and failed to create state-based models that could predict 2020 in a reasonable way. Even when I was able to code the binomial process, I found that my model was way too bullish on Biden’s prospects when translated into margins of victory, so I decided to go descriptive for that week’s blog post and move on.
 
-**Is the model any good?** Historically, the party models average out to a root mean square error of **3.02 percentage points**. What does this capture? This is the in-sample error of the model’s predictions. However, due to the random sampling of data within each tree, this number also helps account for out-of-sample error, since each tree only had access to a subset of the overall data.
+I always intended on coming back to this, though, and I did for a few days earlier this week. I ran into a few problems:
 
-**What was the prediction?** As the visual below shows, I predicted a healthy Biden victory of 334 electoral votes to Trump’s 204. There were seven states within the historical error (in order of predicted Trump support): Arizona, Florida, North Carolina, Georgia, Ohio, Iowa, and Texas.
+(1) My base linear model was overfitting and spitting out landslide results.
+
+(2) I was still having trouble looping the binomial logit for each state.
+
+(3) While I understood how the model introduced uncertainty in turnout by drawing off a binomial distribution, I wasn’t sure how to improve what had already been done in section.
+
+Overall, I wanted to see if there was another way to model the election that improved on the faults of simple linear regression. Since it seemed like the rest of the class was building relatively similar models, I thought it could be useful to approach the task differently. This brought me to random forests.
+
+### My Solution: Random Forests
+
+I was first introduced to random forests by my TF in Prof. Chetty’s Ec 1152 class my sophomore spring. The concept builds off of decision trees, which should sound familiar. Let’s say you wanted to figure out what fruit I was holding. You could ask me whether it was red. That question (or rather the outcome of that test) is a node on this tree, and each branch corresponds to each potential outcome. On the red branch, you may ask if the fruit is used to make cider, since you already know it’s red. On the not red branch, your best guess may be to ask another color question to help narrow things down. There are different ways to structure the tree’s nodes and choose which variables (color, size, etc.) to ask about, but the general concept is simple.
+
+The problem with using a single tree is that it’s liable to overfitting. A tree could be constructed to perfectly fit the data if the number of nodes is unrestricted. Trees on their own are also very sensitive to noisy data.
+
+Random forests help by increasing the number of trees (hence the name). Each individual decision tree is trained on a different sample of data and uses a random subset of predictors (to decrease overfitting), increasing the diversity of the whole. The outcome in question is determined by averaging the results of all of these decision trees. This method is particularly useful for state models (instead of a national model) because of the increased amount of data, which allows trees to use a wide variety of samples and predictors.
+
+With that in mind, I decided to try it out on the election data I’ve compiled. Since the technique randomly selects predictors, I eliminated any other outcome variables in my dataset, which wouldn’t be useful in predicting 2020 outcomes anyway. I justified the inclusion of each variable by only selecting those I had used before in previous models. The one variable I added was presidential approval, and that was because I assumed that the random forest procedure would benefit from having an additional predictor to use. I created separate models for each party, both with the same formula:
+
+$$ State Two-Party Popular Vote Share ~ Lagged State 2P Voteshare + Lagged National 2P Voteshare + (Within) 2-week Polling Support + (Up to) 10-week Polling Support + Annual GDP Growth + Annual Local Unemployment + Presidential Approval + Incumbent Party $$
+
+Since random forest regression is itself an ensemble model, I can’t display coefficients for the model. Also, I did not specify the weights for each tree because that would defeat the purpose. Instead, I can visualize the relative importance of each variable. These values are all relative - you shouldn’t compare these across other specifications - but they provide insight into which variables factor more into the prediction. The results for my models are below:
+
+![Relative Variable Importance](../Plots/importance.png)
+
+As expected (and seen before), lagged vote share, 2-week support, and 10-week support factor the heaviest into the model’s performance. I’m not worried that economic factors lag behind because it is a strange year for the economy and generally speaking, other models tend to put less weight on economic fundamentals as the election nears (such as Silver 2020).
+
+### Model Comparison and Validation
+
+There were a bunch of other ways to specify the model that also made sense. I used two-party voteshare as the outcome variable, but using the unscaled voteshare was also a possibility. I also created models that predicted overall votes per party, models based on incumbency rather than party, and a unitary model to predict two-party voteshare for both candidates.
+
+I used a familiar metric (root mean square error) to compare the models’ performance, which the table below visualizes. Since random forests already proxy out-of-sample validation within each tree through the bootstrapping process, I focused on this in-sample validation to select a model.
+
+![RMSE of Potential Models](../Plots/rmse.png)
+
+A few takeaways:
+
+(1) The main goal was to beat the original linear state-based model, which all of the specifications did.
+
+(2) The incumbency-based and raw vote models didn’t perform great relative to the other models. The unitary model was competitive, but three of the specifications beat it, and conceptually, it makes more sense to individually model for each candidate.
+
+(3) The incumbency-based models didn’t perform great relative to the other models, but the unscaled popular vote models had a better RMSE than two-party models. Why, then, did I choose the two-party model?
+
+It boils down to the nature of the 2020 race. Unscaled popular vote total would be very useful if we expected to see a spoiler candidate. With respect to Jo Jorgensen, third parties don’t seem to be a major factor in the race.
+
+Another use could be to model undecided voters. I initially thought that using unscaled voteshares could shed light on undecided voters. I was wrong for two reasons. First, Jacobson (2020) notes that the number of undecided voters is particularly low in this race. Second, even if I wanted to gauge differential values in undecided voters, it would be better to do that with a predictor rather than the outcome variable. Indeed, as the graph below shows, my model can help with this by having two separate polling averages at different points in the race. Since the number of unaligned poll respondents (undecided voters or third-party voters) goes down dramatically over the course of campaigning, I felt confident in using two-party voteshares to curtail the influence of outlier elections like 1992.
+
+![Undecided Voter Trends](../Plots/undecided.png)
+
+### 2020 Prediction
+
+With all of that background in mind, I can now reveal my 2020 prediction. The map below details the winner of each state, along with a degree of certainty. Any state with a candidate projected to win by 10 points (well outside the average error - proxied by RMSE - of the models) is favored, any state within 10 points (two-party voteshares between 45-55) is leaning one way or the other.
 
 ![My 2020 Prediction](../Plots/final_pv2p.png)
 
-**How did it do?** Not bad at all. It got three states wrong: Florida, North Carolina, and Georgia. The model missed Florida by more than the historical error (it was 3.9 points off). North Carolina was a bit closer at 2 points off. Surprisingly, Georgia was tied for the fourth-closest state, with the predicted estimate only being off by 0.3 points. Overall, the model had an **RMSE of 2.966**. That number drops to 2.856 when New York is excluded due to incomplete results that currently favor Trump. Either way, the RMSE outperforms the original RMSE of 3.02, which is pretty unexpected for an election said to be hard to predict.
+The conclusions:
 
-**How does this error look?** A simple plot of the error is below. One fun outcome: Virginia, with a predicted Trump two-party voteshare of 44.8%, was *accurate down to the tenths place*! Overall, the model missed low on Trump support, particularly where he was projected to be strongest.
+(1) Biden appears *likely* to beat Trump, getting 334 electoral votes from my two-party voteshare models. The most important swing states - Pennsylvania, Florida, Arizona, etc. - lean in his direction (although by less than four points), along with others like Wisconsin, Michigan, and North Carolina.
 
-![Simple Model Error](../Plots/simpleerror.png)
+(2) This map could look worse for Trump - he is favored in Georgia and Texas (by less than two points in both) - but his leads in states like Alaska, Missouri, and South Carolina are narrower than expected.
 
-Before dissecting this error, though, I want to go over one of the alternate scenarios from my final prediction:
+(3) I’m happy I got the `statebins` look to work, but this map could better represent the uncertainty around the outcome. Even if I treated each model individually, the Republican model has an RMSE of 3.14 points, which represents a sizable swing on its own. **Trump is not out of this fight.** If one sees the error of this model as simply the RMSE of both models combined - I know this isn’t accurate, but it’s useful for explaining this - **seven states are within this additive margin of error alone**: Texas, Iowa, Ohio, Georgia, North Carolina, Arizona, and Florida (who combine for 133 electoral votes).
 
-### Scenario Planning
+(4) I could devote pages to the limitations of this model, but chief among them is not dynamically modeling turnout in face of early voting/the pandemic. Another worth mentioning quickly is that this model can’t predict any factors happening outside of the voting process, such as how those votes are counted, which votes may be thrown out, etc. I’d be much more comfortable with the model’s limitations in a different cycle, but since we live the world 2020 has given us, I’m *very* cautious about talking up the strength of my model. A major takeaway from this class is that **uncertainty is OK** in forecasting.
 
-Before the election, I outlined some other specifications of the model. Some of these changed components in the model, but most relied on changing the prediction inputs for 2020. In one of these, I adjusted polling averages in swing states by the 2016 polling error. I ended up with the following prediction:
+### Other Scenarios
 
-![Prediction with 2016 Error](../Plots/final_error.png)
+I wanted to explore some possible scenarios and an alternate universe where the pandemic wasn’t as bad. To do this, I made changes to some of the predictors (polling averages, approval, economic indicators) before they were fed into the model. These aren’t meant to be definitive by any means - they’re just for fun. Here they are!
 
-Why bring this up? This prediction did *better* than my prediction above. It only got two states wrong (Florida and Georgia) and had an RMSE of 2.911 (down to 2.788 without New York).
+#### Shy Trump
 
-Intuitively, this makes sense. There were many polling skeptics this year who believed that underlying problems hadn’t been addressed. I’ll deal more with polling later, but this result is interesting but not necessarily important. As Silver (2020) notes, polling error tends to swing unpredictably between elections. Much like how generals tend to fight the previous war, it probably isn’t the best move to predict the same election by adjusting for previous error. That said, if you have reason to believe this error is endemic to polling and will persist, prior error will be vital to modeling going forward. More on this later.
+First up is lending some weight to the “shy Trump voter” theory, which asserts that Trump support is systematically undercounted due to social desirability bias or non-response bias. The theory sounds promising at first glance, but as Silver (2020) notes, there doesn’t seem to be a uniform effect of this on electoral outcomes. Whatever the case, I decided to indulge the theory’s proponents and model based off of a four-point polling swing (Trump’s numbers up 2, Biden’s down 2) and approval boost to see how it would impact the predicted outcome:
 
-### Prediction Hypotheses
+![Shy Trump](../Plots/final_shy.png)
 
-Needless to say, there is a lot to unpack from this election. What I want to do from here is offer some hypotheses as to where and why my model was wrong and propose or conduct tests to evaluate those beliefs.
+Biden still edges out a victory on this map, but the result is anything but certain. Every swing state is still in play: Trump wins North Carolina, Florida, and Arizona by less than a point, and Biden carries Pennsylvania, Nevada, and Wisconsin by less than two. With the expected error, this is a much more open map than before - 9 states within the combined margin described above (GA, NC, FL, AZ, PA, NV, WI, MI, MN).
 
-Two hypotheses arose from looking at prediction error:
+#### Super Shy Trump
 
-H1: *Disparities in political geography led model error to be geographically distributed, with higher error in the Southeast.*
+I could go even further with the Trump boosters - a uniform eight-point swing in the polls and boost in the approval rating. This one is purely for fun purposes - it’s *very, very, very* unlikely the polls are anywhere this wrong.
 
-Certain predictors may have had geographic quirks that resulted in bad predictions. For instance, pollsters may have systematically undercounted certain voters in Midwestern states or misjudged demographic intentions in the Southeast.
+![Super Shy Trump](../Plots/final_super_shy.png)
 
-H2: *Increases in polarization led model error to be ideologically distributed, with higher error for redder states.*
+The map shows a Trump victory (but not one as big as 2016). Ten states are within that margin: AZ, FL, PA, NV, WI, MI, MN, NH, VA, and CO. Again, this outcome would be extremely, extremely unlikely.
 
-It may be the case that the country is getting more polarized, with red states trending redder and blue states trending bluer. The model may not have been able to account for this if the trend increased since 2016.
+#### Same Errors as 2016
 
-Both of these hypotheses can be initially tested through visuals.
+The two above scenarios are both pretty unlikely and unscientific. Instead of having a uniform error across the board, what if each swing state was off exactly the same way since 2016 (polling errors from Silver 2020)? This isn’t likely - pollsters have made lots of changes and errors are, to a certain extent, random - but here are the results:
 
-To begin evaluating H1, I plotted RMSE by state:
+![2016 Error](../Plots/final_error.png)
 
-![State Model Error](../Plots/errormap20.png)
+Biden still gets a sizable victory here. This is pretty similar to Silver (2020)’s results (which were just added to the vote shares post-model). Interestingly, Maine is now within the margin, along with some of the usual suspects (TX, NC, GA, WI, FL, PA, AZ, MN, and MI).
 
-There does not appear to be any geographic basis for saying any region had sizably more error than another. The model’s incorrect states were consolidated in the Southeast, but the largest root square errors aren’t found there. As mentioned above, North Carolina was largely in line with other errors, and the Georgia point estimate was within half a percentage point of the actual result.
+#### Pandemic-Lite (Corona? Schmorona!)
 
-Another region with a seemingly large polling error - the Midwest - doesn’t seem to have abnormally high model error. Predictions of Minnesota, Pennsylvania, and Michigan were all within three points of reality.
+Finally, let’s maneuver over to a world with a much more subdued coronavirus (or a better handling of it). Trump receives a 6.5-point polling swing in his favor, GDP growth is 0 (still not great, but definitely better than the alternative), state unemployment rates shrink by 25% (lighter recession), and approval goes up to 50% (which was at least a possibility pre-pandemic).
 
-Instead, states like West Virginia, Oklahoma, and New York (due to incomplete data) had the largest error, and there doesn’t seem to be any particular region that’s error-prone.
+![Pandemic-Lite Trump](../Plots/final_fan.png)
 
-Still, I can’t entirely discount H1. To evaluate it further, I would look to regress error on geographic area (probably the Census designations) along with other variables to account for other factors. I wouldn’t anticipate needing any more data than what I currently have to conduct this analysis.
+Trump gets the nod in this map, but it’s pretty close. Pennsylvania is within half a point, and there are nine other states within the margin (AZ, FL, NV, WI, MN, MI, NH, VA, and CO). This implies that Trump wasn’t exactly invulnerable before the virus; even if the handling had gone better and certain indicators swung his way, the election would still look to be very competitive.
 
-To start testing H2, I plotted error on predicted winner:
+### Final Thoughts
 
-![Party Model Error](../Plots/boxplot.png)
+Where does this leave us? **I’m picking Biden to win, but don’t count Trump out.** Uncertainty is king, especially in 2020, and numerous states look to be in play. While I’m proud of my model, I recognize its limitations, especially in a post-2016 world where much of the country is still scarred by state-specific polling error. Biden has many factors going for him: good polling, a lagging economy, low incumbent approval. That said, my model indicates that lagged state voteshare is about as important as polling averages, and Trump’s broad victory in 2016 may help him hold on in key states. Outside of that, other factors outside of my model could play a large role in deciding the outcome.
 
-Based on the graphic, H2 appears to have merit. The average predicted Republican state had a higher error than the average predicted Democratic state, even though there were more predicted Democrat misses (Florida and North Carolina) than predicted Republican misses (Georgia).
-
-However, this doesn’t fully answer the question, since the visualization doesn’t convey how red and blue these states were. I’d want to dive deeper by analyzing state “stickiness” - how often it votes for the same party - and see whether that is correlated with prediction error. If that’s the case, I could also run regressions here to account for other factors. My guess is consistent with H2: sticky red (and, to a lesser extent, sticky blue) states likely have higher prediction error.
-
-From a preliminary judgement of both hypotheses, it seems that H2 is stronger. However, H1’s focus on political geography may strengthen H2 going forward. Rodden (2019) notes how changes in political geography - specifically urban/rural divides - augment polarization and result in the inefficient distribution of Democratic voters across states, leading there to be more red states than blue. Due to this imbalance in political geography, this would result in the average state (and the Electoral College tipping point) trending redder than the nation as a whole.
-
-### Predictor Hypotheses
-
-Until now, I’ve been focusing on the model *predictions* and leaving aside the individual *predictors*. That changes here.
-
-To ground this discussion, here is a plot of each predictor’s relative importance within the random forest model. Remember that each decision tree within the random forest has access to a subset of predictors. What this plot measures is which predictors trees leaned on more often when given access to them. These are relative values, though - variables with the highest importance were not available to every tree - and were calculated for each party model.
-
-![RF Importance](../Plots/importance.png)
-
-Three implications here:
-
-(1) The three most important predictors are the polling averages and lagged state voteshare. There is variation in relative importance for these predictors between models. This isn’t necessarily bad, though, since it justifies my choice to choose party-based models.
-
-(2) The only variable with a significant difference in relative importance is lagged state voteshare. This could be a testament to the relative stickiness of blue states, which deserves further exploration.
-
-(3) The “fundamental” predictors were all substantially less important to the model than the polling averages and lagged state voteshare. It was widely assumed that the pandemic would make 2020 a bad year for fundamentals-based forecasts, but it appears that the random forest model treated these variables as subordinates when possible.
-
-That doesn’t mean the fundamental variables are unimportant. In fact, the economic indicators in particular inspire two more hypotheses:
-
-H3: *Economic variables underestimated Trump support because across the board, voters didn’t “blame” him for the economic crisis.* This assumes that voters held largely similar views on the economy that, if measured, could have reduced the underestimate.
-
-H4: *Economic variables underestimated Trump support because in red states, voters didn’t “blame” him for the economic crisis.* This assumes that Trump’s supporters were likelier to give him a pass on the economy. The distinction here is crucial because of the model’s aforementioned undercounting of Trump support in deep red states.
-
-To evaluate these claims, I would need access to economic approval ratings. I’m aware of certain questions asked to voters on whether they blamed Trump for the pandemic, but I don’t know if questions of blame are historically available. If they are, I’d run my models again with economic approval ratings included to gauge whether this would have any effect.
-
-Now, let’s look at the most important components of the model: polls and lagged state voteshare. I’ve plotted the 2020 results against the predicted values of lagged state voteshare and the polling averages (sub-2 week and up-to-10 week):
-
-![Correlate Error](../Plots/correlates.png)
-
-Quite simply, it appears that the polling averages underestimated Trump support relative to 2020 results and (predictably) the lagged state voteshares overestimated Trump support. These patterns appear to be fairly linear, although lagged state voteshare flips to underestimating Trump in heavily blue states (this may be noise because of New York’s incomplete data).
-
-There isn’t much reason to hypothesize about 2016 state voteshare on its own, but I have two on lagged voteshares more generally:
-
-H5: *Including statewide voteshares from midterm elections would decrease the model’s reliance on polling averages.*
-
-The rationale for this is that midterm results give a concrete example of electorate shifts that could help mitigate systematic polling error. On the other hand, midterm elections could overexaggerate anti-incumbent sentiments in many states, leading to inaccurate predictions.
-
-To evaluate H5, I’d need midterm election data (preferably by state). It would also be useful to have demographic/party ID data from exit polls to help account for turnout swings for certain groups. The quantitative test would be as simple as adding this component to the model and running it again.
-
-H6: *Including more lagged voteshares from general elections would reduce model error.*
-
-Running averages of voteshares from the past few elections may help reduce the noise of any one election. This is similar to FiveThirtyEight’s “partisan lean” variable.
-
-I wouldn’t need any additional data to evaluate H6, since we have popular vote tallies by state going back well past 1980.
-
-That brings us to polling. There is a lot of doubt in the polling industry, especially after the seemingly high-profile misses like Florida. Downballot polling seemed to fare pretty badly this election, but I’d argue that polling averages performed pretty decently in the general. Below, I’ve plotted polling averages as they transition closer to the actual results:
-
-![Polling Avg Error](../Plots/pollavg.png)
-
-As the graph shows, polling was rather steady leading up to the election. Indeed, the largest changes came in heavily red states trending more toward Biden within 2 weeks of voting. The actual results, however, leaned more toward Trump than the averages suggested. Put more succinctly, Trump tended to overperform his polls.
-
-I have three hypotheses to help gauge why polls tended to miss Trump support more than that for Biden:
-
-H7: *Polling averages (and individual polls) missed certain outcomes due to higher response rates among Democrats during the pandemic.*
-
-Druke and Silver (2020) say that Democrat response rates went up during the pandemic because knowledge sector jobs (which lean Democratic) went virtual. I think this is a very interesting development, but I’d need access to polling response rates to accurately judge H7. If I had the data, I’d run a linear regression to see whether party ID was significant in predicting response rate.
-
-H8: *Polling averages (and individual polls) missed certain outcomes due to systematic undercounting of Trump supporters, with reasons ranging from non-response bias to herding.*
-
-I mentioned the “shy Trump voter” theory in my final prediction post. Many believe that position has become stronger post-2020, and some believe it operates independently of Trump through lower rates of social trust among Republican voters. To judge H8, I’d need the same data on polling response rates as H7 and information from polling agencies on how they weigh to see if they were potentially herding. I’d learn toward using linear regression as described in H7 here, but the analysis would have to take many more potential factors into account to prove systemic bias.
-
-H9: *2020 followed a pattern of incumbents overperforming their polls when their approval ratings are low.*
-
-This hypothesis differs from the others in trying to find historical backing for the polling miss. Most of the conversation is focused on 2020’s relation to 2016, but a better comparison may be 2012, where Barack Obama overperformed his polling averages in certain states even though his approval was not great. To test H9, I’d need to consolidate the data I currently have on polling averages and statewide results to test whether incumbents tend to overperform their polls (especially when their approval rating is low).
-
-Finally, I want to propose a hypothesis on undecided voters:
-
-H10: *Polling averages were stable pre-election because voters overestimate the certainty of their voting preference when an incumbent is running for re-election.*
-
-As I noted in my final blog post, Jacobson (2020) finds that the number of undecided voters was particularly high in 2016 but on course to be fairly low in 2020. There could be an exogenous factor that made people change their mind, such as more salient campaign messaging. However, it could also be the case that an incumbent on the ballot biases voters toward reporting they have already made up their minds when they are still subject to change. Since they have been forming opinions on the candidate for the past four years, they may overstate their confidence in their vote preference.
-
-To test H10, I’d more rigorous polling data that showed the percentage of undecided voters over several elections. The data would have to stretch back rather far to get a large enough sample of incumbents running for re-election. The initial evaluation would be a descriptive analysis comparing the number and trend of undecided voters and polling error in the incumbent’s favor.
-
-I think these ten hypotheses can help ground future analysis of the 2020 election and help account for potential errors not just in my models, but in the election analytics industry more generally.
-
-### Takeaways
-
-I have a few conclusions from this whole process and how I’d change the model for future elections:
-
-(1) Random forests can be **black boxes**. I used the `caret` library in R, which was easy to use but harder to strictly evaluate. I think it was serviceable for this election (it gave me good summary statistics), but in the future I’d be willing to work harder on coding the model if it meant I could see more of what was happening under the hood and make changes as needed.
-
-(2) The model didn’t predict **Maine and Nebraska’s congressional districts** separately because of a lack of reliable historical data. That is tougher to fix, but in the future I’ll try harder to include them. If the trend of close elections continue, they could become pivotal.
-
-(3) I can conduct more **historical backtesting** in the future. One part of this would be explicitly conducting leave-one-out cross validation to make sure the model’s random sampling of data are corresponding to out-of-sample accuracy.
-
-(4) If I wanted to devote more attention to the model, I could be much more **rigorous about the polling inputs**. Instead of relying on FiveThirtyEight adjusted averages, I could switch to RealClearPolitics (a much simpler average) or create my own with raw polling data. While there are definitely concerns about reputability of certain pollsters - and those will only increase as pollsters attempt to adjust for the next election - a simple average helps guard against groupthink. Testing simple versus adjusted averages would be crucial here.
-
-(5) Random forest models are very useful when there are a **bunch of predictors**. Eight was enough for me to be satisfied with the model, but it is much stronger when there are many more. Keeping in mind potential correlations between predictors, I want to find more variables to include for the next cycle (like economic opinion polling and partisan lean).
-
-(6) There are a few **pie-in-the-sky changes** that could be made: *weighing polls* based on historical accuracy or time until election, incorporating *betting market data*, transitioning to a *probabilistic model* that randomly samples turnout, or creating an *ensemble model* that includes random forest and other techniques, etc.
-
-### Conclusion
-
-TL;DR - The model surprisingly performed better than expected, but there’s definitely room for improvement going forward. Ultimately, 2020 is shaping up to be a more complex election than 2016, but I’ve hopefully set the groundwork to help explain what analysts got wrong.
+The verdict? A betting man would put money on Biden, but a smarter man would save that money and invest it elsewhere. People can be hard to predict.
 
 ### References
 
-Druke, G. and Silver, N. (2020, Nov. 12). “How the pandemic might have affected the polls in 2020.” *FiveThirtyEight*. Accessed online.
+Allcott, H., et al. (2020). "Polarization and public health: Partisan differences in social distancing during the coronavirus pandemic." *Journal of Public Economics* 191. November 2020. Accessed online.
+
+*The Atlantic*. (2020). "The COVID Tracking Project." Updated October 23, 2020. Accessed online.
 
 Jacobson, L. (2020, Nov. 1). "Why is 2020 not like 2016? Fewer undecideds, for one." *The Tampa Bay Times*. Accessed online.
 
-Rodden, J. (2019). *Why cities lose: The deep roots of the urban-rural political divide.* Basic Books.
-
 Silver, N. (2020, Oct. 31). "Trump can still win, but the polls would have to be off by way more than in 2016." *FiveThirtyEight*. Accessed online.
+
+Vavreck, L. and Warshaw, C. (2020, September 18). "How local Covid deaths are affecting vote choice." *The New York Times.* Accessed online.
