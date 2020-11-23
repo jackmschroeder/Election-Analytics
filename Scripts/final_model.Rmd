@@ -421,7 +421,7 @@ results <- states %>%
   mutate(R_pv2p = rep/(rep+dem),
          D_pv2p = dem/(rep+dem),
          winner = ifelse(R_pv2p > D_pv2p, "Trump", "Biden"),
-         Guide = ifelse(R_pv2p > D_pv2p, ifelse(abs(R_pv2p - D_pv2p) > .0604, "Favor Trump", "Lean Trump"), ifelse(abs(D_pv2p - R_pv2p) < .0604, "Lean Biden", "Favor Biden")))
+         Guide = ifelse(R_pv2p > D_pv2p, ifelse(abs(R_pv2p - D_pv2p) > .0592, "Favor Trump", "Lean Trump"), ifelse(abs(D_pv2p - R_pv2p) < .0592, "Lean Biden", "Favor Biden")))
 
 results %>% 
   ggplot(aes(fill = Guide, state=state)) +
@@ -449,7 +449,7 @@ pv2p_results <- results %>%
          R_pv2p = round(R_pv2p * 100, 1))
 
 pv2p_results %>% 
-  filter(abs(R_pv2p - D_pv2p) < 6.04) %>% 
+  filter(abs(R_pv2p - D_pv2p) < 5.92) %>% 
   arrange(desc(D_pv2p))#%>% 
   #tally(`2020`)
 
