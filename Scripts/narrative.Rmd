@@ -1,0 +1,21 @@
+---
+title: "Narrative"
+author: "Jack Schroeder"
+date: "12/7/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggplot2)
+library(geofacet)
+library(gt)
+library(lubridate)
+library(randomForest)
+library(caret)
+library(statebins)
+
+```
+
