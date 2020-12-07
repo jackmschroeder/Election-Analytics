@@ -21,3 +21,5 @@ Hello! I am a senior at Harvard studying Government and Data Science, with a sec
 ## [Final Prediction (11.1.20)](Posts/final.md)
 
 ## [Post-Election Reflection (11.22.20)](Posts/reflection.md)
+
+## [Post-Election Narrative (12.8.20)](Posts/narrative.md)
