@@ -178,19 +178,55 @@ cor(cor20$real_error, cor16$real_error)
 
 map1 <- left_join(cor16, cor20, by = c("state", "party"), suffix = c(".16", ".20")) %>% 
   mutate(delta = real_error.20 - real_error.16,
-         `Error Consistency` = case_when(abs(real_error.20) > 7 & abs(real_error.16) > 7 ~ "Alarming (>7)",
-                            abs(real_error.20) > 4 & abs(real_error.16) > 4 ~ "Worrying (>4)",
-                            TRUE ~ "Tolerable (<4 Points)"))
+         `Error Consistency` = case_when(abs(real_error.20) > 6 & abs(real_error.16) > 6 ~ "Alarming (Both >6)",
+                            abs(real_error.20) > 3 & abs(real_error.16) > 3 ~ "Worrying (Both >3)",
+                            TRUE ~ "Tolerable (<3 Points)"))
 
 ggplot(map1, aes(fill = `Error Consistency`, state = state)) +
   geom_statebins() +
   theme_statebins() +
   scale_fill_manual(values = c("#8ace7e", "#ffda66", "#ff684c"),
-                    breaks = c("Tolerable (<4 Points)", "Worrying (>4)", "Alarming (>7)")) +
+                    breaks = c("Tolerable (<3 Points)", "Worrying (Both >3)", "Alarming (Both >6)")) +
   labs(title = "Error Correlation Map",
-       subtitle = "Most States Off by >4 Points in Both Elections.",
-       caption = "Polling averages missed red and yellow states by >7 and >4 points, respectively, in both elections.\nGreen states may still have seen polling misses, but not consistently >4 points.\nModel and graphic created by Jack Schroeder.") +
+       subtitle = "Most States Off by >3 Points in Both Elections.",
+       caption = "Polling averages missed red and yellow states by >6 and >3 points, respectively, in both elections.\nGreen states may still have seen polling misses, but not consistently >3 points.\nModel and graphic created by Jack Schroeder.") +
   ggsave("../Plots/error_cor.png")
+
+cor12 <- master %>% 
+  filter(year == 2012, party == "republican") %>% 
+  select(year, state, party, real_error)
+
+map2 <- left_join(cor12, cor16, by = c("state", "party"), suffix = c(".12", ".16")) %>% 
+  mutate(delta = real_error.16 - real_error.12,
+         `Error Consistency` = case_when(abs(real_error.16) > 6 & abs(real_error.12) > 6 ~ "Alarming (Both >6)",
+                            abs(real_error.16) > 3 & abs(real_error.12) > 3 ~ "Worrying (Both >3)",
+                            TRUE ~ "Tolerable (<3 Points)"))
+
+map2 %>% count(`Error Consistency`)
+
+cor08 <- master %>% 
+  filter(year == 2008, party == "republican") %>% 
+  select(year, state, party, real_error)
+
+map3 <- left_join(cor08, cor12, by = c("state", "party"), suffix = c(".08", ".12")) %>% 
+  mutate(delta = real_error.12 - real_error.08,
+         `Error Consistency` = case_when(abs(real_error.12) > 6 & abs(real_error.08) > 6 ~ "Alarming (Both >6)",
+                            abs(real_error.12) > 3 & abs(real_error.08) > 3 ~ "Worrying (Both >3)",
+                            TRUE ~ "Tolerable (<3 Points)"))
+
+map3 %>% count(`Error Consistency`)
+
+cor04 <- master %>% 
+  filter(year == 2004, party == "republican") %>% 
+  select(year, state, party, real_error)
+
+map4 <- left_join(cor04, cor08, by = c("state", "party"), suffix = c(".04", ".08")) %>% 
+  mutate(delta = real_error.08 - real_error.04,
+         `Error Consistency` = case_when(abs(real_error.08) > 6 & abs(real_error.04) > 6 ~ "Alarming (Both >6)",
+                            abs(real_error.08) > 3 & abs(real_error.04) > 3 ~ "Worrying (Both >3)",
+                            TRUE ~ "Tolerable (<3 Points)"))
+
+map4 %>% count(`Error Consistency`)
 
 ```
 
@@ -233,8 +269,26 @@ summary(m04e)
 regressions <- as_tibble(data.frame(year = c("2004", "2008", "2012", "2016", "2020"), ar2 = c(summary(m04)$adj.r.squared, summary(m08)$adj.r.squared, summary(m12)$adj.r.squared, summary(m16)$adj.r.squared, summary(m20)$adj.r.squared), ar2error = c(summary(m04e)$adj.r.squared, summary(m08e)$adj.r.squared, summary(m12e)$adj.r.squared, summary(m16e)$adj.r.squared, summary(m20e)$adj.r.squared))) %>% 
   mutate(ar2 = ar2*100,
          ar2error = ar2error*100,
-         boost = ar2error - ar2)
+         boost = ar2error - ar2) %>% 
+  gt() %>% 
+  fmt_number(columns = 2:4,
+             decimals=2) %>% 
+  tab_header(title = md("**Explanatory Power of Error**"),
+             subtitle = md("2020 saw *unique increase* in error's explanatory power")) %>% 
+  cols_label(year = "Year",
+             ar2 = md("AR<sup>2</sup> (Base)"),
+             ar2error = md("AR<sup>2</sup> (Error)"),
+             boost = "Boost") %>% 
+  tab_style(style = cell_fill(color = "lightgreen"), locations = cells_body(columns = 4, rows = boost > 3)) %>% 
+  tab_source_note(source_note = md("AR<sup>2</sup> is adjusted r-squared, which measures variables' explanatory power in regression.")) %>% 
+  tab_source_note(source_note = "Boost measures increase of explanatory power between base (Results ~ Poll Avg.) and error models (Results ~ Poll Avg. + Previous Error).") %>% 
+  tab_source_note(source_note = "Table created by Jack Schroeder.") %>% 
+  gtsave("../Plots/errortable.png")
 
+regressions
+```
+
+```{r historical error, echo=FALSE, warning=FALSE}
 master %>% 
   mutate(direction = case_when(real_error>0 ~ "Republican",
                                real_error<0 ~ "Democrat")) %>% 
@@ -262,8 +316,7 @@ master %>%
 # margin_0 and margin_0_adjusted
 
 master %>% 
-  filter(year>2010,
-         party == "republican") %>% 
+  filter(party == "republican") %>% 
   mutate(adjusted_error = margin - margin_0_adjusted,
          versus = real_error - adjusted_error,
          winner = case_when(pv2p>50 ~ "Republican",
@@ -273,15 +326,15 @@ master %>%
   geom_boxplot(outlier.shape = NA, alpha=0.25) +
   scale_color_manual(values = c("dodgerblue", "#DE0100"),
                     breaks = c("Democrat", "Republican")) +
-  ylim(-0.25, 1) +
+  ylim(-1, 1) +
   geom_abline(slope=0, intercept=0) +
   theme_bw() +
   theme(legend.position = "none") +
-  labs(title = "Adjusted Polls Outperform Raw Averages",
+  labs(title = "Adjusted Polls Underperform Raw Averages",
        subtitle = "No Partisan Bias in Error Comparisons",
        y = "Adjusted Error - Raw Error",
        x = "Year",
-       caption = "Dots are difference in polling errors on state-level.\n Points are colored by winning party.\nPositive 2012 outliers omitted for space considerations.\nGraphic created by Jack Schroeder.") +
+       caption = "Dots are difference in polling errors on state-level.\n Points are colored by winning party.\nPositive 2012 and negative 2004-08 outliers omitted for space considerations.\nGraphic created by Jack Schroeder.") +
   ggsave("../Plots/adjustedpolls.png",
          width = 8,
          height = 5)
