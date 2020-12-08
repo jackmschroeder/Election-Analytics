@@ -17,5 +17,21 @@ library(randomForest)
 library(caret)
 library(statebins)
 
+# Load in 2020, 2016, 2012, 2008 results
+
+# Find 2020, 2016, 2012, 2008 polling error
+
+# Use visual from reflection on polling avgs/result
+
+# More noise within 2 weeks?
+
+# 2020 vs 2016 - map of error correlation
+
+# Regress 2020 results on 2020 polling + 2016 error
+
+# Do this for 2016 and 2012
+
+# Test FiveThirtyEight raw vs adjusted averages (2016 and 2020)
+
 ```
 

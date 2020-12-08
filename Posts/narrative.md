@@ -9,7 +9,9 @@ In the post below, I’ll:
 (1) Elaborate on the take,
 (2) Craft some testable implications of the narrative,
 (3) Gather some data to test that implication,
-And (4) Test that narrative and present conclusions.
+(4) Explain what the tests *won’t* do,
+5) Test that narrative,
+And (6) present conclusions.
 
 ### The Take
 
@@ -17,13 +19,41 @@ Many observers of the 2020 election felt cheated by the coverage that dominated 
 
 Even though most data journalists advised caution (like some had before 2016), there was a collective outpouring of blame toward the analytics industry for failing to anticipate a close election. Some of these broadsides accused quantitatively-focused writers of failing to see what was happening “on the ground.” Others were more forceful, asserting that high poll numbers were tantamount to voter suppression.
 
-Generally, though, it appeared that analytics failed to “learn” from 2016. Four years ago, many were stunned by President Trump’s electoral college victory. Pollsters and modelers claimed to have accounted for some of that error going forward by weighing by education and emphasizing uncertainty in forecasts. However, for many, 2020 was evidence that those fixes didn’t work. For these people, **the polls got the same things wrong again**.
+Generally, though, it appeared that analytics *failed to “learn” from 2016*. Four years ago, many were stunned by President Trump’s electoral college victory. Pollsters and modelers claimed to have accounted for some of that error going forward by weighing by education and emphasizing uncertainty in forecasts. However, for many, 2020 was evidence that those fixes didn’t work. For these people, **the polls got the same things wrong again**.
+
+This narrative is important to test because it is a *basic indicator of trust* in election analytics. If it appears that the polls were similarly wrong in 2020 as they were in 2016, trust in polling and modeling will decrease. The tangible impact of this could be in **lower poll response rates**. People may be less likely to devote time to answering opinionnaires if they believe the industry is fundamentally flawed. As a result, preliminary analyses like this will be **vital** for data-focused political junkies going forward.
 
 ### Testable Implications
 
-How can that narrative be evaluated *empirically*?
+How can the narrative be evaluated *empirically*? There are many ways to construct an analysis here, but I will focus on the following five methods:
 
-### Data Sources
+(1) **Error correlation**: Was 2020 error correlated with 2016 error? This is the easiest test to implement, but a strong correlation would lend credence to the 
+
+(2) **Regression significance**: Does including 2016 polling error in a regression of 2020 results on polling averages (a) boost the simple equation’s explanatory power and (b) end up being significantly correlated with outcomes?
+
+(3) **Model adjustments**: Did FiveThirtyEight’s adjusted poll averages outperform the raw averages?
+
+(4) **Time sensitivity**: Were polls within two weeks of Election Day more off than those within ten weeks?
+
+(5) **Historical backtesting**: Do any of the relationships from the above tests hold up using other recent elections?
+
+### Data
+
+To answer these questions, I’m relying on a relatively spartan array of datasets. The bedrock of this will be statewide popular vote totals this century (all used previously in this class). I’ll augment that data with presidential polling averages (and adjusted averages) from *FiveThirtyEight*. The combination of data there will allow me to calculate polling error on the state level for each state from 2000 onwards.
+
+### Limitations
+
+For transparency, here is what these tests cannot show:
+
+(1) What *actually* went wrong for pollsters in both cycles. Doing this would likely focus on whether weighing for education worked between 2016 and 2020. Finding that out would require lots of time spent individually analyzing methodologies from each pollster and making a determination of whether weights were rigorous or arbitrary, then extending those findings into results-based analyses. I found it easier and more justified to use the industry as a whole, since the average voter rarely takes individual house effects into consideration.
+
+(2) Polling error in *down-ballot races*. There’s been a lot of the polls dramatically overestimating Democrats’ chances in key Senate races. A few notable House races were seemingly missed as well. I lack the data to properly analyze this, since I’m focusing on state-level polls and results on the presidential election.
+
+(3) Which *demographics* polling had the most trouble with. It’s tempting to take these state-level analyses and try to correlate them with state-level demographics, but this would fall under the ecological fallacy. Demographic error is a very important question, though, and many people are likely working on it as you read this.
+
+(4) Whether data journalists have *actually* utilized language surrounding uncertainty in their forecasts since 2016. Text analysis would be useful here, but I don’t have access to an “uncertainty corpus” or a dataset of prominent data-viz articles from 2016 and 2020.
+
+(5) And much, much more. One of the major takeaways from this class has been to avoid large proclamations in favor of nuanced and rigorous positions. I’ll try not to fall victim to this: the work below is a *preliminary* analysis of the election.
 
 ### The Test
 
