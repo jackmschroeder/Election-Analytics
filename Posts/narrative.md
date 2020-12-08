@@ -2,15 +2,20 @@
 
 ### A Primer
 
-2020 is almost over. The people have voted, the models have been reflected upon, but there’s still time to evaluate some common post-election narratives. This cycle was full of hot takes from both sides preceding and in the immediate aftermath of the election. I plan on tackling one of these narratives: that pollsters and modelers **failed to “learn” from 2016** and **got the** *same* **things wrong**.
+2020 is almost over. The people have voted, the models have been reflected upon, but there’s still time to evaluate some common post-election narratives. This cycle was full of hot takes from both sides preceding and in the immediate aftermath of the election. I plan on tackling one of these narratives: that pollsters and modelers **failed to learn from 2016 and got the same things wrong**.
 
 In the post below, I’ll:
 
 (1) Elaborate on the take,
+
 (2) Craft some testable implications of the narrative,
+
 (3) Gather some data to test that implication,
+
 (4) Explain what the tests *won’t* do,
-5) Test that narrative,
+
+(5) Test that narrative,
+
 And (6) present conclusions.
 
 ### The Take
@@ -57,11 +62,19 @@ For transparency, here is what these tests cannot show:
 
 #### Error Correlation
 
+![Correlated Error Map](../Plots/error_cor.png)
+
 #### Regression Significance
+
+![Historical Error](../Plots/error_history.png)
 
 #### Model Adjustments
 
+![Raw vs Adjusted Polls](../Plots/adjustedpolls.png)
+
 #### Time Sensitivity
+
+![Poll Movement](../Plots/pollavg_new.png)
 
 ### Conclusions
 

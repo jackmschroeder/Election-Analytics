@@ -17,6 +17,133 @@ library(randomForest)
 library(caret)
 library(statebins)
 
+results <- read_csv("../Data/popvote_bystate_1948-2020.csv") %>% 
+  mutate(total = case_when(state == "New York" & year == 2020 ~ 8611007,
+                           TRUE ~ total),
+         D = case_when(state == "New York" & year == 2020 ~ 5244006,
+                           TRUE ~ D),
+         R = case_when(state == "New York" & year == 2020 ~ 3251230,
+                           TRUE ~ R),
+         D_pv2p = case_when(state == "New York" & year == 2020 ~ 0.61728785404,
+                           TRUE ~ D_pv2p),
+         R_pv2p = case_when(state == "New York" & year == 2020 ~ 0.38271214596,
+                           TRUE ~ R_pv2p),
+         margin = (R_pv2p - D_pv2p)) %>% 
+  rename(democrat = D_pv2p,
+         republican = R_pv2p) %>% 
+  pivot_longer(democrat:republican, names_to = "party",
+               values_to = "pv2p") %>% 
+  mutate(pv2p = case_when(year == 2020 ~ pv2p * 100,
+                          TRUE ~ pv2p),
+         margin = case_when(year == 2020 ~ margin * 100,
+                            TRUE ~ margin))
+
+names <- read_csv("../Data/pollavg_1968-2016.csv") %>% 
+  select(year, party, candidate_name)
+names <- distinct(names)
+
+avg_20 <- read_csv("../Data/presidential_poll_averages_2020.csv") %>% 
+  mutate(modeldate = as.Date(modeldate, "%m/%d/%Y"),
+         election_date = as.Date("11/03/2020", "%m/%d/%Y"),
+         days_to = difftime(election_date, modeldate, unit="days")) %>% 
+  rename(year = cycle) %>% 
+  mutate(party = case_when(candidate_name == "Joseph R. Biden Jr." ~ "democrat",
+                           candidate_name == "Donald Trump" ~ "republican")) %>% 
+  filter(!is.na(party),
+         state != "National",
+         state != "NE-2", 
+         state != "NE-1", 
+         state != "NE-3", 
+         state != "ME-1", 
+         state != "ME-2")
+
+averages <- read_csv("../Data/pres_pollaverages_1968-2016.csv") %>% 
+  select(cycle, state, modeldate, election_date, candidate_name, pct_estimate, pct_trend_adjusted) %>% 
+  mutate(modeldate = as.Date(modeldate, "%m/%d/%Y"),
+         election_date = as.Date(election_date, "%m/%d/%Y"),
+         days_to = difftime(election_date, modeldate, unit="days")) %>% 
+  rename(year = cycle) %>% 
+  left_join(., names,  by = c("year", "candidate_name")) %>% 
+  filter(!is.na(party),
+         state != "National",
+         state != "NE-2", 
+         state != "NE-1", 
+         state != "NE-3", 
+         state != "ME-1", 
+         state != "ME-2") %>% 
+  full_join(., avg_20, by = c("year", "state", "party", "modeldate", "election_date", "pct_estimate", "pct_trend_adjusted", "candidate_name", "days_to")) %>% 
+  select(year, state, modeldate, election_date, days_to, candidate_name, party, pct_estimate, pct_trend_adjusted)
+
+avg_0_r <- averages %>% 
+  filter(days_to < 1,
+         party == "republican") %>% 
+  group_by(year, state) %>% 
+  summarize(raw_0 = mean(pct_estimate),
+            adjusted_0 = mean(pct_trend_adjusted))
+
+avg_0_d <- averages %>% 
+  filter(days_to < 1,
+         party == "democrat") %>% 
+  group_by(year, state) %>% 
+  summarize(raw_0 = mean(pct_estimate),
+            adjusted_0 = mean(pct_trend_adjusted))
+
+avg_0 <- left_join(avg_0_r, avg_0_d, by = c("year", "state"), suffix = c(".r", ".d")) %>% 
+  mutate(raw_0.rpv = raw_0.r / (raw_0.r+raw_0.d)*100,
+         raw_0.dpv = raw_0.d / (raw_0.r+raw_0.d)*100,
+         margin_0 = raw_0.r - raw_0.d,
+         margin_0_adjusted = adjusted_0.r - adjusted_0.d)
+
+avg_2_r <- averages %>% 
+  filter(days_to < 15,
+         party == "republican") %>% 
+  group_by(year, state) %>% 
+  summarize(raw_2 = mean(pct_estimate))
+
+avg_2_d <- averages %>% 
+  filter(days_to < 15,
+         party == "democrat") %>% 
+  group_by(year, state) %>% 
+  summarize(raw_2 = mean(pct_estimate))
+
+avg_2 <- left_join(avg_2_r, avg_2_d, by = c("year", "state"), suffix = c(".r", ".d")) %>% 
+  mutate(raw_2.rpv = raw_2.r / (raw_2.r+raw_2.d)*100,
+         raw_2.dpv = raw_2.d / (raw_2.r+raw_2.d)*100,
+         margin_2 = raw_2.r - raw_2.d)
+
+avg_10_r <- averages %>% 
+  filter(days_to < 71,
+         party == "republican") %>% 
+  group_by(year, state) %>% 
+  summarize(raw_10 = mean(pct_estimate))
+
+avg_10_d <- averages %>% 
+  filter(days_to < 71,
+         party == "democrat") %>% 
+  group_by(year, state) %>% 
+  summarize(raw_10 = mean(pct_estimate))
+
+avg_10 <- left_join(avg_10_r, avg_10_d, by = c("year", "state"), suffix = c(".r", ".d"))%>% 
+  mutate(raw_10.rpv = raw_10.r / (raw_10.r+raw_10.d)*100,
+         raw_10.dpv = raw_10.d / (raw_10.r+raw_10.d)*100,
+         margin_10 = raw_10.r - raw_10.d)
+
+master <- results %>% 
+  left_join(., avg_0, by = c("state", "year")) %>% 
+  left_join(., avg_2, by = c("state", "year")) %>% 
+  left_join(., avg_10, by = c("state", "year")) %>% 
+  filter(year > 1999) %>% 
+  mutate(raw_0 = case_when(party == "republican" ~ raw_0.r,
+                           party == "democrat" ~ raw_0.d),
+         raw_2 = case_when(party == "republican" ~ raw_2.r,
+                           party == "democrat" ~ raw_2.d),
+         raw_10 = case_when(party == "republican" ~ raw_10.r,
+                           party == "democrat" ~ raw_10.d),
+         error_0_raw = pv2p - raw_0,
+    error_0 = case_when(party == "republican" ~ pv2p - raw_0.rpv,
+                             party == "democrat" ~ pv2p - raw_0.dpv),
+    real_error = margin - margin_0)
+
 # Load in 2020, 2016, 2012, 2008 results
 
 # Find 2020, 2016, 2012, 2008 polling error
@@ -32,6 +159,176 @@ library(statebins)
 # Do this for 2016 and 2012
 
 # Test FiveThirtyEight raw vs adjusted averages (2016 and 2020)
+
+```
+
+```{r error correlation, echo=FALSE}
+
+cor20 <- master %>% 
+  filter(year == 2020,
+         party == "republican") %>% 
+  select(year, state, party, real_error)
+
+cor16 <- master %>% 
+  filter(year == 2016,
+         party == "republican") %>% 
+  select(year, state, party, real_error)
+
+cor(cor20$real_error, cor16$real_error)
+
+map1 <- left_join(cor16, cor20, by = c("state", "party"), suffix = c(".16", ".20")) %>% 
+  mutate(delta = real_error.20 - real_error.16,
+         `Error Consistency` = case_when(abs(real_error.20) > 7 & abs(real_error.16) > 7 ~ "Alarming (>7)",
+                            abs(real_error.20) > 4 & abs(real_error.16) > 4 ~ "Worrying (>4)",
+                            TRUE ~ "Tolerable (<4 Points)"))
+
+ggplot(map1, aes(fill = `Error Consistency`, state = state)) +
+  geom_statebins() +
+  theme_statebins() +
+  scale_fill_manual(values = c("#8ace7e", "#ffda66", "#ff684c"),
+                    breaks = c("Tolerable (<4 Points)", "Worrying (>4)", "Alarming (>7)")) +
+  labs(title = "Error Correlation Map",
+       subtitle = "Most States Off by >4 Points in Both Elections.",
+       caption = "Polling averages missed red and yellow states by >7 and >4 points, respectively, in both elections.\nGreen states may still have seen polling misses, but not consistently >4 points.\nModel and graphic created by Jack Schroeder.") +
+  ggsave("../Plots/error_cor.png")
+
+```
+
+```{r regression significance, echo=FALSE, warning=FALSE}
+
+# party error?
+
+m20 <- lm(pv2p ~ raw_0, master, subset = year > 2019)
+summary(m20)
+
+errors <- master %>% 
+  mutate(year = year + 4) %>% 
+  select(year, state, party, error_0_raw) %>% 
+  rename(error_0_prev = error_0_raw)
+
+m20e <- lm(pv2p ~ raw_0 + error_0_prev, master %>% left_join(., errors, by = c("year", "state", "party")), subset = year == 2020)
+summary(m20e)
+
+
+m16 <- lm(pv2p ~ raw_0, master, subset = year == 2016)
+summary(m16)
+m16e <- lm(pv2p ~ raw_0 + error_0_prev, master %>% left_join(., errors, by = c("year", "state", "party")), subset = year == 2016)
+summary(m16e)
+
+m12 <- lm(pv2p ~ raw_0, master, subset = year == 2012)
+summary(m12)
+m12e <- lm(pv2p ~ raw_0 + error_0_prev, master %>% left_join(., errors, by = c("year", "state", "party")), subset = year == 2012)
+summary(m12e)
+
+m08 <- lm(pv2p ~ raw_0, master, subset = year == 2008)
+summary(m08)
+m08e <- lm(pv2p ~ raw_0 + error_0_prev, master %>% left_join(., errors, by = c("year", "state", "party")), subset = year == 2008)
+summary(m08e)
+
+m04 <- lm(pv2p ~ raw_0, master, subset = year == 2004)
+summary(m04)
+m04e <- lm(pv2p ~ raw_0 + error_0_prev, master %>% left_join(., errors, by = c("year", "state", "party")), subset = year == 2004)
+summary(m04e)
+
+regressions <- as_tibble(data.frame(year = c("2004", "2008", "2012", "2016", "2020"), ar2 = c(summary(m04)$adj.r.squared, summary(m08)$adj.r.squared, summary(m12)$adj.r.squared, summary(m16)$adj.r.squared, summary(m20)$adj.r.squared), ar2error = c(summary(m04e)$adj.r.squared, summary(m08e)$adj.r.squared, summary(m12e)$adj.r.squared, summary(m16e)$adj.r.squared, summary(m20e)$adj.r.squared))) %>% 
+  mutate(ar2 = ar2*100,
+         ar2error = ar2error*100,
+         boost = ar2error - ar2)
+
+master %>% 
+  mutate(direction = case_when(real_error>0 ~ "Republican",
+                               real_error<0 ~ "Democrat")) %>% 
+  ggplot(aes(x=factor(year), y=real_error)) +
+  geom_abline(slope = 0, intercept = 0) +
+  geom_jitter(alpha=0.3, aes(color=direction)) + 
+  geom_boxplot(outlier.shape = NA, alpha=0.8) + 
+  theme_bw() +
+  scale_color_manual(values = c("dodgerblue", "#DE0100"),
+                    breaks = c("Democrat", "Republican")) +
+  theme(legend.position = "none") +
+  labs(title = "Historical Polling Error",
+       x = "Year",
+       y = "Polling Error",
+       subtitle = "Average Underestimate of Republicans in '16 and '20",
+       caption = "Dots indicate statewide polling errors.\nPositive polling error means polls underestimated Republicans.\nGraphic created by Jack Schroeder.") +
+  ggsave("../Plots/error_history.png",
+         width = 8,
+         height = 5)
+
+```
+
+```{r model adjustments, echo=FALSE, warning=FALSE}
+
+# margin_0 and margin_0_adjusted
+
+master %>% 
+  filter(year>2010,
+         party == "republican") %>% 
+  mutate(adjusted_error = margin - margin_0_adjusted,
+         versus = real_error - adjusted_error,
+         winner = case_when(pv2p>50 ~ "Republican",
+                            TRUE ~ "Democrat")) %>% 
+  ggplot(aes(x=factor(year), y=versus)) +
+  geom_jitter(alpha=.5, aes(color=winner)) +
+  geom_boxplot(outlier.shape = NA, alpha=0.25) +
+  scale_color_manual(values = c("dodgerblue", "#DE0100"),
+                    breaks = c("Democrat", "Republican")) +
+  ylim(-0.25, 1) +
+  geom_abline(slope=0, intercept=0) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  labs(title = "Adjusted Polls Outperform Raw Averages",
+       subtitle = "No Partisan Bias in Error Comparisons",
+       y = "Adjusted Error - Raw Error",
+       x = "Year",
+       caption = "Dots are difference in polling errors on state-level.\n Points are colored by winning party.\nPositive 2012 outliers omitted for space considerations.\nGraphic created by Jack Schroeder.") +
+  ggsave("../Plots/adjustedpolls.png",
+         width = 8,
+         height = 5)
+  
+  
+# Negligible
+```
+
+```{r time sensitivity, echo=FALSE}
+
+# Introduce graph from reflection - pollavg.png
+# Change it - facet wrap by candidate (year and party), legend by party
+
+master %>% 
+  filter(year == 2020 | year == 2016,
+         party == "republican",
+         state != "District of Columbia") %>% 
+  select(year, state, party, pv2p, raw_0, raw_2, raw_10, D, R) %>% 
+  mutate(winner = case_when(year == 2016 & R > D ~ "Trump 2016",
+                            year == 2016 & D > R ~ "Clinton 2016",
+                            year == 2020 & R > D ~ "Trump 2020",
+                            year == 2020 & D > R ~ "Biden 2020")) %>%
+  rename(`Poll Avg.\n(>2 Weeks)` = raw_10,
+         `Poll Avg.\n(<2 Weeks)` = raw_2,
+         `Poll Avg.\n(Election Day)` = raw_0,
+         `Actual\nResults` = pv2p) %>% 
+  pivot_longer(`Actual\nResults`:`Poll Avg.\n(>2 Weeks)`, names_to = "indicator", values_to = "pestimate") %>% 
+  mutate(indicator = fct_relevel(indicator, "Poll Avg.\n(>2 Weeks)", "Poll Avg.\n(<2 Weeks)", "Poll Avg.\n(Election Day)", "Actual\nResults"),
+         winner = fct_relevel(winner, "Clinton 2016", "Trump 2016", "Biden 2020", "Trump 2020"),
+         pestimate_50 = ifelse(pestimate > 50, "Republican", "Democrat")) %>% 
+  ggplot(aes(x=indicator, y=pestimate, group=state, color=pestimate_50)) +
+  geom_line(alpha=0.5) + 
+  geom_point() +
+  scale_color_manual(values = c("dodgerblue", "salmon"),
+                    breaks = c("Democrat", "Republican")) +
+  geom_abline(slope=0, intercept=50, alpha=0.5) +
+  facet_wrap(~winner) +
+  labs(x = "",
+       y = "Trump Voteshare",
+       title = "Polls Moved Differently in Each Cycle",
+       subtitle = "2016 Polls Were Trending Toward Trump, 2020 Polls Stayed Stagnant",
+       color = "Leader",
+       caption = "Polling averages from FiveThirtyEight.\n>2 week averages extend up to 10 weeks pre-election.\nModel and graphic created by Jack Schroeder.") +
+  theme_bw() +
+  ggsave("../Plots/pollavg_new.png",
+         width = 8,
+         height = 6)
 
 ```
 
