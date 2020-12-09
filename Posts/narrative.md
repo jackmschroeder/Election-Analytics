@@ -1,4 +1,4 @@
-## Post-Election Narrative (12.8.20)
+## Post-Election Narrative (12.10.20)
 
 ### A Primer
 
@@ -24,7 +24,7 @@ And (6) present conclusions.
 
 To many, those preparations failed in 2020. For them, the main takeaway from Election Night was that **pollsters failed to learn from 2016 and got the same things wrong**. You didn’t have to look far for this take. It was visible on the front of The New York Post (“Wrong, Wrong, Wrong”), the pages of WFTV Orlando (“The polls were wrong, again”), and the landing page of Politico (“The polling industry blows it again”).
 
-Look back to that WFTV Orlando headline. “Wrong” is not the key word, since, again, polls will always have error. “Again” is the more worrying part of the title, since it implies that **the analytics industry didn’t learn from 2016**.
+Look back to that WFTV Orlando headline (Heath and Frazier 2020). “Wrong” is not the key word, since polls will always have error. “Again” is the more worrying part of the title, since it implies that **the analytics industry didn’t learn from 2016**.
 
 This is an important narrative to study in an Election Analytics class. Believing in pollsters’ capacity to learn is a *basic indicator of trust* in the industry more broadly. If it appears that the polls were similarly wrong in 2020 as they were in 2016, trust in that industry will decrease. The tangible impact of this could manifest through **lower poll response rates.** People may be less likely to devote time to answering opinionnaires if they believe the industry is fundamentally flawed and unfixable. As a result, preliminary analyses like this will be **vital** for data-focused political junkies going forward.
 
@@ -32,13 +32,13 @@ This is an important narrative to study in an Election Analytics class. Believin
 
 How can the narrative be evaluated *empirically*? There are many ways to construct an analysis here, but I will focus on the following four methods, making sure to add **historical backtesting** when necessary to see if trends hold up with other recent elections:
 
-(1) **Error correlation**: If the take is true, it implies that 2020 error should be correlated with 2016 error. Polls should have gotten states wrong in similar ways between cycles.
+(1) **Error correlation**: If the take is true, it implies that 2020 error should be correlated with 2016 error. Polls should have gotten states wrong in similar ways between cycles. I will take a simple correlation before diving deeper into state-level idiosyncrasies.
 
-(2) **Regression significance**: If the narrative holds, 2016 polling error should help explain 2020 results. I’ll regress 2020 outcomes on polling averages and include past cycle polling error to see if it boosts explanatory power and is significantly correlated with the outcome variable. I’ll also go a step deeper and incorporate my pre-election prediction model.
+(2) **Regression significance**: If the narrative holds, 2016 polling error should help explain 2020 results. (1) may already tell us the two errors are correlated, but (2) tries to establish a stronger conclusion: whether 2016 error *uniquely* helps explain 2020 results*. To do this, I’ll regress election outcomes on prior cycle error.
 
-(3) **Model adjustments**: This focuses more on modelers getting the same things wrong - if that’s the case, we should expect FiveThirtyEight’s adjusted polling averages to be similarly wrong as their 2016 adjusted averages. At a more fundamental level, I’ll also test whether adjusted poll averages outperform raw averages.
+(3) **Model adjustments**: (1) and (2) have focused on pollsters, but (3) looks at modelers. *FiveThirtyEight* makes public both their raw and *adjusted* polling averages. I want to see whether the adjusted polling averages have lower error than the raw averages and whether 2016 and 2020 were unique in that regard. If 2016 and 2020 (a) similarly see adjusted averages lose to raw averages and (b) are alone in that regard, it would imply that modelers may also not have learned from 2016.
 
-(4) **Time sensitivity**: Herding was seen to be a major problem in 2016, and if the take is correct, polls within two weeks of the election may overestimate the perceived leader. I’ll test whether polling averages two weeks out were more reliable in both elections than the averages on Election Day.
+(4) **Time sensitivity**: Many pundits focused on pre-election herding as a major problem in 2016 (Saunders 2016). Using poll averages from different time periods, I will test (a) whether my analysis detects herding in 2016 and (b) whether polls within two weeks of the election overestimated the perceived leader in both cycles. If both of those tests come back positive, it could mean that pollsters are making the same mistake of trusting common consensus too much to publish contrarian results.
 
 ### Data
 
@@ -52,11 +52,11 @@ For transparency, here is what these tests cannot show:
 
 (2) Polling error in *down-ballot races*. There’s been a lot of the polls dramatically overestimating Democrats’ chances in key Senate races. A few notable House races were seemingly missed as well. I lack the data to properly analyze this, since I’m focusing on state-level polls and results on the presidential election.
 
-(3) Which *demographics* polling had the most trouble with. It’s tempting to take these state-level analyses and try to correlate them with state-level demographics, but this would fall under the ecological fallacy. Demographic error is a very important question, though, and many people are likely working on it as you read this.
+(3) Which *demographics* polling had the most trouble with. It’s tempting to take these state-level analyses and try to correlate them with state-level demographics, but this would fall victim to the ecological fallacy. Demographic error is a very important question, though, and many people are likely working on it as you read this.
 
 (4) Whether data journalists have *actually* utilized language surrounding uncertainty in their forecasts since 2016. Text analysis would be useful here, but I don’t have access to an “uncertainty corpus” or a dataset of prominent data-viz articles from 2016 and 2020.
 
-(5) And much, much more. One of the major takeaways from this class has been to avoid large proclamations in favor of nuanced and rigorous positions. I’ll try not to fall victim to this: the work below is a *preliminary* analysis of the election.
+(5) And much, much more. One of the major takeaways from this class has been to avoid large proclamations in favor of nuanced and rigorous positions. I’ll try not to fall victim to this: the work below is a **preliminary** analysis of the election.
 
 ### The Tests
 
@@ -64,23 +64,23 @@ For transparency, here is what these tests cannot show:
 
 If pollsters got the same things wrong in 2020 that they did in 2016, both years’ polling error should be correlated. Before calculating that value, though, it’s worth discussing what exactly polling error means.
 
-There are a variety of ways to measure polling error, but I’ll use the one Silver (2018) focuses on: difference between actual margin and poll margin. This definition assumes the stability of a two-party race, which wasn’t entirely true in 2016, but still useful for my purposes. An alternative, comparing polling point estimates with actual results, suffers because polling includes undecided voters, who eventually have to make a choice at the ballot box. As the graph from my final model shows, while the number of undecided voters in polls decreases before election day, they still exist and could distort this alternative measure. That’s why I’ll stick with Silver (2018)’s definition of polling error.
+There are a variety of ways to measure polling error, but I’ll use the one Silver (2018) focuses on: difference between actual margin and poll margin. This definition assumes the stability of a two-party race, which wasn’t entirely true in 2016, but still useful for my purposes. An alternative, comparing polling point estimates with actual results, suffers because polling includes undecided voters, who eventually have to make a choice at the ballot box. As the graph below from my final model shows, almost a tenth of respondents report being undecided right before Election Day. That’s why I’ll stick with Silver (2018)’s definition of polling error, even though it is susceptible to third parties and undecided voters exogenously coalescing toward a particular candidate.
 
 ![Undecided Voters](../Plots/undecided.png)
 
-The correlation I got was 0.65: positive but not that strong. Still, there may be something here, so I attempted to map these correlations out. In the visualization below, states are green if absolute polling error was not consistently above 3 points, yellow if absolute polling error in both elections exceeded 3 points, and red if that error was greater than 6 points in both elections.
+The correlation I got between the errors was 0.65: positive but not that strong. Still, there may be something here, so I attempted to map these correlations out. In the visualization below, states are green if absolute polling error was not consistently above 3 points, yellow if absolute polling error in both elections exceeded 3 points, and red if that error was greater than 6 points in both elections.
 
 ![Correlated Error Map](../Plots/error_cor.png)
 
 This gives more information than the simple correlation estimate, but the insights are very nuanced. The polls are currently under fire from many for badly predicting Florida in 2020, but it is a green state because the polling error was manageable in 2016. For our purposes, though, we’re only concerned with states that polls consistently missed in both elections.
 
-21 states are in this green zone. 17 are in the yellow zone, which means polls were off by more than 3 points in both elections. This is reason to worry, but the focus should be on the 13 red states that saw consistent misses of over 6 points.
+21 states are in this green zone. 17 are in the yellow zone, which means polls were off by more than 3 points in both elections. This is reason to worry, but the focus should be on the 13 red states that saw consistent misses of over 6 points. These numbers add up to 51 because they include the District of Columbia.
 
-The red states - ones where pollsters didn’t seem to learn from 2016 - are heavily red and geographically consolidated away from the coasts. While safe blue states (CA, NJ, etc.) are mostly green, these states are Republican strongholds. Could pollsters be failing to fully gauge Trump support in Trump country? This map isn’t indicative by itself - some deep red states like Kansas and Louisiana are green - but it lends support to the take.
+The red-error states - ones where pollsters didn’t seem to learn from 2016 - are heavily Republican-red and geographically consolidated away from the coasts. While safe blue states (CA, NJ, etc.) are mostly green, these states are conservative strongholds. Could pollsters be failing to fully gauge Trump support in Trump country? This map isn’t indicative by itself - some deep red states like Kansas and Louisiana are green - but it lends support to the take. Pollsters are failing to adapt in certain states.
 
 What do these maps look like historically? There were *28 green states* between 2012-16 and *35* between 2008-12. Between 2004 and 2008 (both wildly different elections), there were **45 green states**.
 
-This could be a separate phenomenon from pollsters failing to learn from the previous election. Maybe green states are exogenously decreasing because error wobbles from election to election. The next section will test that theory.
+This could be a separate phenomenon from pollsters failing to learn from the previous election. It could be that as polarization increases, pollsters spend less effort on safe states. Or maybe green states are exogenously decreasing because error wobbles more from election to election. The next section will test the latter theory.
 
 #### Regression Significance
 
@@ -88,41 +88,41 @@ To start out, I plotted historical polling error since 2000. I created a boxplot
 
 ![Historical Error](../Plots/error_history.png)
 
-Three things jump out: (1) average polling error was pretty small before a huge jump in 2016, (2) error seemed to jump around, even underestimating Democrats on average in 2008 and 2012, and (3) 2020’s error was similar to 2016’s.
+Three things jump out: (1) average statewide error was pretty small before a huge jump in 2016, (2) error seemed to jump around, underestimating *Democrats* on average in 2008 and 2012, and (3) 2020’s error was similar to 2016’s.
 
 That third point is the most important to the narrative. If pollsters got the same things wrong in 2020, we should expect not just similar errors but that the previous errors can help explain future results.
 
-As the table below indicates, including past error in a simple model didn’t help boost explanatory power before 2016. But using 2016’s error to help predict 2020 was immensely useful, boosting the adjusted r-squared of the model by almost 4 points.
+As the table below indicates, including past error in a simple model didn’t help boost explanatory power before 2020. But using 2016’s error to help predict 2020 results was immensely useful, boosting the adjusted r-squared of the model by almost 4 points.
 
 ![Regression Table](../Plots/errortable.png)
 
 Why is there a significant boost? Go back to the graph: 2016 and 2020’s errors are very close. The regression comparisons tell us that the similarity in average state error seems to be helping on the individual state level as well.
 
-What does this mean? Preliminarily, this supports the polling skeptics. For all the boasting of fixing polls by weighing education documented by Skelley and Rakich (2020), the errors from both elections do seem to be fairly similar.
+What does this mean? Preliminarily, this supports the narrative. For all the boasting of fixing polls by weighing education documented by Skelley and Rakich (2020), the errors from both elections do seem to be fairly similar.
 
 This isn’t fair to Skelley and Rakich, though, who work at *FiveThirtyEight*. Their jobs are to be skeptical of polling and try to account for error through their models. Just how well those models account for polling error is the focus of the next section.
 
 #### Model Adjustments
 
-The reason election models are necessary is because polls will inevitably be off. As mentioned above, modelers include other variables to counteract polling error. Some modelers, though, try and adjust the polls before adding these other variables. *FiveThirtyEight* does this through their raw and adjusted polling averages.
+The reason election models are necessary is because polls will inevitably be off. As mentioned above, modelers include other variables to counteract polling error. Some modelers, though, try to adjust the polls before adding these other variables. *FiveThirtyEight* does this through their raw and adjusted polling averages.
 
 I wanted to see if these adjusted averages outperformed their raw counterparts. To do this, I subtracted raw polling error from adjusted polling error for each election this century. A negative difference means the adjusted error outperformed raw error (which is good for *FiveThirtyEight*), and vice versa with positive differences.
 
 ![Raw vs Adjusted Polls](../Plots/adjustedpolls.png)
 
-The adjusted averages do well until 2012, where they stop beating the raw errors. Why? Since *FiveThirtyEight* wasn’t around before 2008, the poll adjustments before that election were most likely done after-the-fact, and the adjustments themselves were probably trained on those results. They should be performing well.
+The adjusted averages do well until 2012, when they stop beating the raw errors. Why? Since *FiveThirtyEight* wasn’t around before 2008, the poll adjustments before that election were most likely done after-the-fact, and the adjustments themselves were probably trained on those results. We should expect them to perform well.
 
-For the last three elections, though, it’s possible that the adjustments were created before results were known and not fitted afterward. Another possibility is that the adjusted averages are adjusted even more through the modeling process.
+For the last three elections, though, it’s possible that the adjustments were created before results were known and not fitted afterward. Another possibility is that the adjusted averages are adjusted even more throughout the modeling process, something we don’t get to see.
 
-What does this mean for the take? The purpose of comparing these averages was to see if modelers seemed to learn to account for polling error. On a whole, *FiveThirtyEight*’s model did better this cycle - correctly predicting the winner helps in that regard - but this test is inconclusive. If 2020 and 2016 were outliers in the adjusted error failing to beat the raw error, there could be reason to probe this further. But since 2012 also saw the raw averages beat out the adjusted ones, there’s no support for modelers failing to have learned from 2016.
+What does this mean for the take? The purpose of comparing these averages was to see if modelers seemed to learn to account for polling error. On a whole, *FiveThirtyEight*’s model did better this cycle - correctly predicting the winner helps in that regard - but this test is *inconclusive*. If 2020 and 2016 were outliers in the adjusted error failing to beat the raw error, there could be reason to probe this further. But since 2012 also saw the raw averages beat out the adjusted ones, there’s no support for modelers failing to have learned from 2016.
 
 There’s one final thing to check in the polls, though, and that’s whether they made the same mistakes within two weeks in both cycles.
 
 #### Time Sensitivity
 
-If pollsters failed to learn from 2016, then herding should have impacted both elections in similar ways. Herding is the process of internally adjusting results to match the common consensus. The industry at-large was accused of herding results leading up to Trump’s victory in 2016. If this is right, and pollsters failed to account for this, polling averages should have moved in similar directions in both elections.
+If pollsters failed to learn from 2016, then herding should have impacted both elections in similar ways. Herding is the process of internally adjusting results to match the common consensus. The industry at-large was accused of herding results leading up to Trump’s victory in 2016 (Saunders 2016). If this is right, and pollsters failed to account for this, polling averages should have moved in similar directions in both elections.
 
-To measure this, I decided to update a graph used in my reflection to include 2016 results. The graph shows average support between 2-10 weeks before the election, then average support up to two weeks, average support on Election Day, then the actual result. I segmented the graph into four quadrants, each representing who ended up winning the state. The polls didn’t get every state right, so point color shows which candidate was perceived to be leading at each moment.
+To measure this, I decided to update a graph used in my reflection to include 2016 results. The graph shows average support between 2-10 weeks before the election, average support up to two weeks, average support on Election Day, then the actual result. I segmented the graph into four quadrants, each representing who ended up winning the state. The polls didn’t get every state right, so point color shows which candidate was perceived to be leading at each moment.
 
 ![Poll Movement](../Plots/pollavg_new.png)
 
@@ -136,15 +136,27 @@ What does this mean for the take? It casts doubt on the premise that herding mov
 
 ### Conclusions
 
-Especially when the outcome was still in doubt, many people believed that pollsters failed to learn from 2016. I set out to judge this empirically.
+Especially when the outcome was still in doubt, many people believed that **pollsters failed to learn from 2016**. I set out to judge this empirically.
 
-These simple and preliminary tests yielded conflicting results. On the one hand, polling error seems to have been fairly consistent between 2016 and 2020. Many states were predicted incorrectly by similar magnitudes in both elections, and 2016 polling error uniquely boosted the predictive power of a simple results ~ polling regression for 2020.
+These simple and preliminary tests yielded **conflicting results**. On the one hand, polling error seems to have been fairly consistent between 2016 and 2020. Many states were predicted incorrectly by similar magnitudes in both elections, and 2016 polling error uniquely boosted the predictive power of a simple results ~ polling regression for 2020.
 
-However, *FiveThirtyEight*’s poll adjustments also failed to beat raw averages in 2012, and the trends described above may well be an exogenous shift in electoral preferences that’s completely separate from the industry’s learning capacity. The discussion on herding also reveals unique complexities between 2016 and 2020, as well as a potentially misinformed consensus on herding from 2016.
+However, *FiveThirtyEight*’s poll adjustments also failed to beat raw averages in 2012, and the trends described above may well be an exogenous shift in electoral preferences that’s completely separate from the industry’s learning capacity. The discussion on herding also reveals **unique complexities** between 2016 and 2020, as well as a potentially *misinformed consensus* on herding from 2016.
 
-Overall, I’m relatively confident the data show that polling error was similar between 2016 and 2020. That said, *polling* error is different from *pollster* error, and I don’t have the evidence to make a judgement of the industry as a whole. Due to the limits of these analyses, I probably wasn’t going to end up in a position to be able to have a sweeping conclusion. Still, these tests were useful in relaying to me the complexity in evaluating common narratives and the many directions that can take.
+Overall, I’m relatively confident the data show that **polling error was similar** between 2016 and 2020. That said, *polling* error is different from *pollster* error, and **I don’t have the evidence to make a judgement of the industry as a whole**. Due to the limits of these analyses, I probably wasn’t going to end up in a position to be able to have a sweeping conclusion. Still, these tests were useful in relaying to me the *complexity* in evaluating common narratives and the many directions that analysis can take.
 
 ### References
+
+Heath, C., and Frazier, C. (2020, Nov. 12). “The polls were wrong, again.” *WFTV*. Accessed online.
+
+Kasirajan, S. (2020, Nov. 5). “Pollsters work to increase accuracy after learning from 2016 polling mistakes.” *The Cavalier Daily*. Accessed online.
+
+Linge, M. K., and Lewak, D. (2020, Nov. 13). “Why election polls were so wrong again in 2020.” *The New York Post*. Accessed online.
+
+Oakes, B., and Fleming, W. (2020, Oct. 16). “Have pollsters in 2020 learned the lessons of 2016?” *WBUR*. Accessed online.
+
+Saunders, D. (2016, Nov. 11). “How herding blinded polls to Trump’s big win.” *San Francisco Chronicle*. Accessed online.
+
+Shepard, S. (2020, Nov. 6). “The polling industry blows it again.” *Politico*. Accessed online.
 
 Silver, N. (2018, May 30). “The polls are all right." *FiveThirtyEight*. Accessed online.
 
